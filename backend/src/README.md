@@ -1,0 +1,1 @@
+Nota importante de configuración: Si estás usando la Raspberry Pi interna, recuerda habilitar el puerto serie desde sudo raspi-config (en la sección de Interface Options -> Serial) y asegúrate de desactivar la consola de login por serie, permitiendo únicamente el hardware del puerto serie.
