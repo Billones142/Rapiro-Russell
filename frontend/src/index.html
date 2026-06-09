@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapiro Control Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #030712;
+            --bg-secondary: #0b1528;
+            --panel-bg: rgba(17, 24, 39, 0.7);
+            --border-glow: rgba(56, 189, 248, 0.15);
+            --accent-cyan: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-amber: #f59e0b;
+            --accent-emerald: #10b981;
+            --accent-rose: #f43f5e;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-primary);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.1) 0px, transparent 50%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 1024px) {
+            .container {
+                grid-template-columns: 320px 1fr 360px;
+            }
+        }
+
+        /* Glassmorphism Panel */
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .panel:hover {
+            border-color: var(--border-glow);
+            box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.05);
+        }
+
+        .panel-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        /* Header Style */
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            background: rgba(17, 24, 39, 0.5);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo-area h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-area p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--accent-rose);
+            box-shadow: 0 0 10px var(--accent-rose);
+        }
+
+        .status-indicator.connected {
+            background-color: var(--accent-emerald);
+            box-shadow: 0 0 10px var(--accent-emerald);
+        }
+
+        /* Buttons */
+        .btn {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 0.875rem;
+            padding: 0.625rem 1.25rem;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .btn-cyan {
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            box-shadow: 0 4px 12px rgba(3, 105, 161, 0.25);
+        }
+
+        .btn-cyan:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(3, 105, 161, 0.4);
+        }
+
+        .btn-rose {
+            background: linear-gradient(135deg, #be123c, #9f1239);
+            box-shadow: 0 4px 12px rgba(159, 18, 57, 0.25);
+        }
+
+        .btn-rose:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(159, 18, 57, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Grid Lists */
+        .grid-motions {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .motion-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .motion-card:hover {
+            background: rgba(56, 189, 248, 0.05);
+            border-color: rgba(56, 189, 248, 0.3);
+            transform: translateX(4px);
+        }
+
+        .motion-info h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .motion-info p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* LED Panel styles */
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .color-btn {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-btn:hover {
+            transform: scale(1.15);
+        }
+
+        .led-status {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .led-glow {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin: 0 auto 0.5rem;
+            background-color: #000;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        /* Servos Sliders */
+        .servos-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .servos-list {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .servo-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .servo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .servo-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .servo-value {
+            font-size: 0.875rem;
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--accent-cyan);
+            font-weight: bold;
+            background: rgba(56, 189, 248, 0.1);
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .servo-control {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .servo-slider {
+            flex-grow: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+            accent-color: var(--accent-cyan);
+        }
+
+        .servo-slider::-webkit-slider-runnable-track {
+            height: 6px;
+        }
+
+        /* Log Panel */
+        .log-console {
+            background: #020617;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-family: monospace;
+            font-size: 0.75rem;
+            height: 350px;
+            overflow-y: auto;
+            color: #34d399;
+            white-space: pre-wrap;
+        }
+
+        .log-line {
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            padding-bottom: 0.25rem;
+        }
+
+        .log-time {
+            color: #64748b;
+        }
+
+        .log-cmd {
+            color: var(--accent-cyan);
+        }
+
+        .log-res {
+            color: #10b981;
+        }
+
+        .log-error {
+            color: var(--accent-rose);
+        }
+
+        /* Action bar for diagnostics */
+        .diag-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <header>
+        <div class="logo-area">
+            <h1>Rapiro Control Panel</h1>
+            <p>Monitoreo e interfaz directa GPIO</p>
+        </div>
+        <div class="status-badge">
+            <div id="status-indicator" class="status-indicator"></div>
+            <span id="status-text">Desconectado</span>
+            <button id="btn-toggle-connect" class="btn btn-cyan" onclick="toggleConnection()">Conectar</button>
+        </div>
+    </header>
+
+    <!-- Column 1: Predefined Motions & Diagnostics -->
+    <section style="display: flex; flex-direction: column; gap: 2rem;">
+        <!-- Motions Panel -->
+        <div class="panel">
+            <div class="panel-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Movimientos
+            </div>
+            <div class="grid-motions" id="motions-list">
+                <!-- Se cargará dinámicamente -->
+            </div>
+        </div>
+
+        <!-- Diagnostics Panel -->
+        <div class="panel">
+            <div class="panel-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Diagnósticos
+            </div>
+            <div class="diag-grid">
+                <button class="btn btn-secondary" onclick="runDiagnostic('/test/servos')">Probar Servos</button>
+                <button class="btn btn-secondary" onclick="runDiagnostic('/test/neopixel')">Probar Ojos LED</button>
+                <button class="btn btn-secondary" onclick="runDiagnostic('/test/motions')">Probar Secuencias</button>
+                <button class="btn btn-cyan" onclick="runDiagnostic('/test/full')">Diagnóstico Completo</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Column 2: Servo Sliders -->
+    <section class="panel">
+        <div class="panel-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16.2 7.8l-2 2c-.8-.8-2-.8-2.8 0-.8.8-.8 2 0 2.8l-2 2"/></svg>
+            Servomotores (S00 - S11)
+        </div>
+        <div class="servos-list" id="servos-list">
+            <!-- Se cargará dinámicamente -->
+        </div>
+    </section>
+
+    <!-- Column 3: LED Eyes Control & Console Logs -->
+    <section style="display: flex; flex-direction: column; gap: 2rem;">
+        <!-- LED Eyes Control -->
+        <div class="panel">
+            <div class="panel-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                LED Ojos RGB
+            </div>
+            <div class="color-palette">
+                <button class="color-btn" style="background-color: #000000;" onclick="sendColor(0, 0, 0)" title="Apagar"></button>
+                <button class="color-btn" style="background-color: #ff0000; box-shadow: 0 0 8px #ff0000;" onclick="sendColor(255, 0, 0)" title="Rojo"></button>
+                <button class="color-btn" style="background-color: #00ff00; box-shadow: 0 0 8px #00ff00;" onclick="sendColor(0, 255, 0)" title="Verde"></button>
+                <button class="color-btn" style="background-color: #0000ff; box-shadow: 0 0 8px #0000ff;" onclick="sendColor(0, 0, 255)" title="Azul"></button>
+                <button class="color-btn" style="background-color: #ffff00; box-shadow: 0 0 8px #ffff00;" onclick="sendColor(255, 255, 0)" title="Amarillo"></button>
+                <button class="color-btn" style="background-color: #00ffff; box-shadow: 0 0 8px #00ffff;" onclick="sendColor(0, 255, 255)" title="Cian"></button>
+                <button class="color-btn" style="background-color: #ff00ff; box-shadow: 0 0 8px #ff00ff;" onclick="sendColor(255, 0, 255)" title="Magenta"></button>
+                <button class="color-btn" style="background-color: #ffffff; box-shadow: 0 0 8px #ffffff;" onclick="sendColor(255, 255, 255)" title="Blanco"></button>
+            </div>
+            <div class="led-status">
+                <div id="led-indicator" class="led-glow"></div>
+                <span id="led-indicator-text" style="font-size: 0.875rem;">Color actual: Desconocido</span>
+            </div>
+        </div>
+
+        <!-- Terminal Logs -->
+        <div class="panel" style="flex-grow: 1; display: flex; flex-direction: column;">
+            <div class="panel-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6M12 19h8"/></svg>
+                Terminal de Registro
+            </div>
+            <div class="log-console" id="log-console">
+                <div class="log-line"><span class="log-time">[SISTEMA]</span> Panel de Control iniciado. Esperando conexión...</div>
+            </div>
+            <button class="btn btn-secondary" style="margin-top: 0.75rem; font-size: 0.75rem; padding: 0.4rem 1rem;" onclick="clearLogs()">Limpiar Consola</button>
+        </div>
+    </section>
+</div>
+
+<script>
+    const API_BASE = ""; // La API corre en el mismo host y puerto
+    let isConnected = false;
+    let throttleTimers = {};
+    let statusInterval = null;
+
+    // Listado de nombres descriptivos de servos
+    const servoNames = {
+        0: "S00: Cabeza (Giro)",
+        1: "S01: Cintura (Giro)",
+        2: "S02: Hombro Derecho",
+        3: "S03: Brazo Derecho",
+        4: "S04: Pinza Derecha",
+        5: "S05: Hombro Izquierdo",
+        6: "S06: Brazo Izquierdo",
+        7: "S07: Pinza Izquierda",
+        8: "S08: Pie Derecho (Giro)",
+        9: "S09: Pie Derecho (Inclinación)",
+        10: "S10: Pie Izquierdo (Giro)",
+        11: "S11: Pie Izquierdo (Inclinación)"
+    };
+
+    // Listado de movimientos soportados
+    const motionDetails = {
+        0: { name: "Detener / Home", desc: "Posición neutral del robot", color: "var(--accent-cyan)" },
+        1: { name: "Caminar Adelante", desc: "Secuencia cíclica de caminar", color: "var(--accent-emerald)" },
+        2: { name: "Caminar Atrás", desc: "Retroceder de forma cíclica", color: "var(--accent-purple)" },
+        3: { name: "Girar Derecha", desc: "Rotar sobre el eje a la derecha", color: "var(--accent-amber)" },
+        4: { name: "Girar Izquierda", desc: "Rotar sobre el eje a la izquierda", color: "var(--accent-amber)" },
+        5: { name: "Saludar", desc: "Mano izquierda arriba + LED verde", color: "var(--accent-emerald)" },
+        6: { name: "Bajar Mano", desc: "Bajar mano izquierda + LED amarillo", color: "var(--accent-amber)" },
+        7: { name: "Mover Ambos Brazos", desc: "Doble brazo arriba + LED azul", color: "var(--accent-cyan)" },
+        8: { name: "Despedirse", desc: "Saludar con mano derecha + LED rojo", color: "var(--accent-rose)" },
+        9: { name: "Giro y Pose", desc: "Brazo derecho arriba + giro de cintura", color: "var(--accent-purple)" }
+    };
+
+    window.onload = function() {
+        buildServoUI();
+        buildMotionUI();
+        pollStatus();
+        statusInterval = setInterval(pollStatus, 3000);
+    };
+
+    function log(prefix, content, isError = false) {
+        const consoleEl = document.getElementById("log-console");
+        const line = document.createElement("div");
+        line.className = "log-line";
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const timeSpan = `<span class="log-time">[${timestamp}]</span> `;
+        const prefixSpan = `<span class="${isError ? 'log-error' : 'log-cmd'}">${prefix}:</span> `;
+        
+        line.innerHTML = timeSpan + prefixSpan + content;
+        consoleEl.appendChild(line);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearLogs() {
+        document.getElementById("log-console").innerHTML = `<div class="log-line"><span class="log-time">[SISTEMA]</span> Consola limpia.</div>`;
+    }
+
+    function buildServoUI() {
+        const container = document.getElementById("servos-list");
+        container.innerHTML = "";
+        
+        for (let i = 0; i < 12; i++) {
+            const servoCard = document.createElement("div");
+            servoCard.className = "servo-item";
+            
+            servoCard.innerHTML = `
+                <div class="servo-header">
+                    <span class="servo-name">${servoNames[i]}</span>
+                    <span class="servo-value" id="val-servo-${i}">90°</span>
+                </div>
+                <div class="servo-control">
+                    <input type="range" min="0" max="180" value="90" class="servo-slider" id="slider-servo-${i}" oninput="onServoSliderChange(${i}, this.value)" disabled>
+                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="testSingleServo(${i})" id="btn-test-servo-${i}" disabled>Test</button>
+                </div>
+            `;
+            container.appendChild(servoCard);
+        }
+    }
+
+    function buildMotionUI() {
+        const container = document.getElementById("motions-list");
+        container.innerHTML = "";
+        
+        for (let i = 0; i < 10; i++) {
+            const motion = motionDetails[i];
+            const motionCard = document.createElement("div");
+            motionCard.className = "motion-card";
+            motionCard.onclick = () => runMotion(i);
+            motionCard.setAttribute("id", `motion-card-${i}`);
+            
+            motionCard.innerHTML = `
+                <div class="motion-info">
+                    <h4 style="color: ${motion.color};">${motion.name}</h4>
+                    <p>${motion.desc}</p>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-secondary);"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            `;
+            container.appendChild(motionCard);
+        }
+    }
+
+    async function pollStatus() {
+        try {
+            const res = await fetch(`${API_BASE}/status`);
+            if (!res.ok) throw new Error("Fallo al consultar status");
+            const data = await res.json();
+            
+            updateConnectionUI(data.connected);
+            
+            if (data.connected) {
+                // Actualizar los sliders con los valores actuales si no los estamos arrastrando
+                // (Para simplificar, solo actualizamos si hay un cambio grande o si queremos estar al día)
+                log("STATUS", `Pines GPIO activos en puerto serie lógico ${data.port}`);
+            }
+        } catch (err) {
+            updateConnectionUI(false);
+        }
+    }
+
+    function updateConnectionUI(connected) {
+        isConnected = connected;
+        const indicator = document.getElementById("status-indicator");
+        const statusText = document.getElementById("status-text");
+        const toggleBtn = document.getElementById("btn-toggle-connect");
+        
+        // Habilitar o deshabilitar sliders y botones
+        for (let i = 0; i < 12; i++) {
+            const slider = document.getElementById(`slider-servo-${i}`);
+            const btn = document.getElementById(`btn-test-servo-${i}`);
+            if (slider) slider.disabled = !connected;
+            if (btn) btn.disabled = !connected;
+        }
+
+        if (connected) {
+            indicator.className = "status-indicator connected";
+            statusText.innerText = "Conectado (GPIO)";
+            toggleBtn.innerText = "Desconectar";
+            toggleBtn.className = "btn btn-rose";
+        } else {
+            indicator.className = "status-indicator";
+            statusText.innerText = "Desconectado";
+            toggleBtn.innerText = "Conectar";
+            toggleBtn.className = "btn btn-cyan";
+        }
+    }
+
+    async function toggleConnection() {
+        const endpoint = isConnected ? "/serial/disconnect" : "/serial/connect";
+        log("API_REQ", `Invocando ${endpoint}...`);
+        
+        try {
+            const res = await fetch(`${API_BASE}${endpoint}`, { method: "POST" });
+            const data = await res.json();
+            
+            if (data.ok) {
+                log("API_RES", data.message);
+                updateConnectionUI(!isConnected);
+            } else {
+                log("API_ERR", data.message, true);
+            }
+        } catch (err) {
+            log("API_ERR", `Fallo al realizar la conexión: ${err}`, true);
+        }
+    }
+
+    function onServoSliderChange(id, value) {
+        document.getElementById(`val-servo-${id}`).innerText = `${value}°`;
+        
+        // Throttling para no inundar el backend con peticiones continuas
+        if (throttleTimers[id]) return;
+        
+        throttleTimers[id] = setTimeout(async () => {
+            const command = `#PS${String(id).padStart(2, '0')}A${String(value).padStart(3, '0')}T005`;
+            try {
+                const res = await fetch(`${API_BASE}/command`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ command: command, wait: 0.1 })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    log("SLIDER", `Moviendo servo S${id:02d} a ${value}° -> ${data.response}`);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+            delete throttleTimers[id];
+        }, 80);
+    }
+
+    async function testSingleServo(id) {
+        log("API_REQ", `Invocando test unitario servo S${id}...`);
+        try {
+            const res = await fetch(`${API_BASE}/test/servos/${id}`, { method: "POST" });
+            const data = await res.json();
+            if (data.ok) {
+                log("API_RES", `Servo S${id} probado con éxito.`);
+            } else {
+                log("API_ERR", data.message, true);
+            }
+        } catch (err) {
+            log("API_ERR", `Error al probar servo: ${err}`, true);
+        }
+    }
+
+    async function runMotion(id) {
+        if (!isConnected) {
+            alert("Por favor, pulsa en Conectar arriba antes de enviar movimientos.");
+            return;
+        }
+        log("API_REQ", `Ejecutando movimiento M${id} (${motionDetails[id].name})...`);
+        try {
+            const res = await fetch(`${API_BASE}/test/motions/${id}`, { method: "POST" });
+            const data = await res.json();
+            if (data.ok) {
+                log("API_RES", `Movimiento ${id} completado.`);
+            } else {
+                log("API_ERR", data.message, true);
+            }
+        } catch (err) {
+            log("API_ERR", `Error de red ejecutando movimiento: ${err}`, true);
+        }
+    }
+
+    async function sendColor(r, g, b) {
+        if (!isConnected) {
+            alert("Conéctate primero para controlar los ojos.");
+            return;
+        }
+        const colorStr = `R:${r} G:${g} B:${b}`;
+        log("API_REQ", `Cambiando ojos LED RGB a ${colorStr}...`);
+        
+        const command = `#PR${String(r).padStart(3, '0')}G${String(g).padStart(3, '0')}B${String(b).padStart(3, '0')}T005`;
+        try {
+            const res = await fetch(`${API_BASE}/command`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ command: command, wait: 0.2 })
+            });
+            const data = await res.json();
+            if (data.ok) {
+                log("API_RES", `LED cambiado con éxito -> ${data.response}`);
+                
+                // Actualizar la vista del indicador
+                const indicator = document.getElementById("led-indicator");
+                const text = document.getElementById("led-indicator-text");
+                indicator.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+                indicator.style.boxShadow = `0 0 15px rgb(${r}, ${g}, ${b})`;
+                text.innerText = `Color actual: RGB(${r}, ${g}, ${b})`;
+            } else {
+                log("API_ERR", data.message, true);
+            }
+        } catch (err) {
+            log("API_ERR", `Error al enviar color: ${err}`, true);
+        }
+    }
+
+    async function runDiagnostic(endpoint) {
+        if (!isConnected) {
+            alert("Conéctate antes de realizar pruebas de diagnóstico.");
+            return;
+        }
+        log("API_REQ", `Iniciando diagnóstico en ${endpoint}...`);
+        try {
+            const res = await fetch(`${API_BASE}${endpoint}`, { method: "POST" });
+            const data = await res.json();
+            if (data.ok) {
+                log("API_RES", `Prueba completada: ${data.message || 'Exito'}`);
+                if (data.steps) {
+                    data.steps.forEach(step => {
+                        log("PASO", `S${step.servo_id} a ${step.angle}°: ${step.ok ? 'OK' : 'FALLÓ'}`);
+                    });
+                }
+            } else {
+                log("API_ERR", data.message, true);
+            }
+        } catch (err) {
+            log("API_ERR", `Fallo en la petición de diagnóstico: ${err}`, true);
+        }
+    }
+</script>
+
+</body>
+</html>

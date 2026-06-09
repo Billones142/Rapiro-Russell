@@ -110,6 +110,27 @@ class RapiroRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self) -> None:
+        parsed = urlparse(self.path)
+        path = parsed.path.rstrip("/") or "/"
+        if path == "/":
+            try:
+                ui_path = os.path.join(os.path.dirname(__file__), "index.html")
+                with open(ui_path, "r", encoding="utf-8") as f:
+                    html_content = f.read()
+                body = html_content.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(body)
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(f"Error loading UI: {e}".encode("utf-8"))
+            return
+
         self._dispatch("GET")
 
     def do_POST(self) -> None:
