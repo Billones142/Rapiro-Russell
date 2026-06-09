@@ -637,7 +637,7 @@
                 });
                 const data = await res.json();
                 if (data.ok) {
-                    log("SLIDER", `Moviendo servo S${id:02d} a ${value}° -> ${data.response}`);
+                    log("SLIDER", `Moviendo servo S${String(id).padStart(2, '0')} a ${value}° -> ${data.response}`);
                 }
             } catch (err) {
                 console.error(err);
