@@ -8,9 +8,9 @@ from typing import Optional
 import serial
 
 # Serial port defaults for Raspberry Pi UART connection to Rapiro board
-DEFAULT_PORT = os.environ.get("RAPIRO_SERIAL_PORT", "/dev/ttyS0")
+DEFAULT_PORT = os.environ.get("RAPIRO_SERIAL_PORT", "/dev/ttyAMA0")
 DEFAULT_BAUD = int(os.environ.get("RAPIRO_BAUD_RATE", "57600"))
-COMMAND_DELAY = float(os.environ.get("RAPIRO_COMMAND_DELAY", "0.5"))
+COMMAND_DELAY = float(os.environ.get("RAPIRO_COMMAND_DELAY", "1.8"))
 RESPONSE_TIMEOUT = float(os.environ.get("RAPIRO_RESPONSE_TIMEOUT", "1.0"))
 
 # Servo IDs and human-readable names (S00-S11)
@@ -50,38 +50,33 @@ class RapiroSerialClient:
     def __init__(self, port: str = DEFAULT_PORT, baud: int = DEFAULT_BAUD):
         self.port = port
         self.baud = baud
-        self._serial: Optional[serial.Serial] = None
+        self._connected = False
         self._lock = threading.Lock()
         self.last_error: Optional[str] = None
 
     @property
     def is_connected(self) -> bool:
-        return self._serial is not None and self._serial.is_open
+        return self._connected
 
     def connect(self) -> dict:
-        """Open the serial connection to the Rapiro microcontroller."""
+        """Open/test the serial connection to the Rapiro microcontroller."""
         with self._lock:
-            if self.is_connected:
-                return {"ok": True, "message": "Already connected", "port": self.port}
-
             try:
-                self._serial = serial.Serial(self.port, self.baud, timeout=RESPONSE_TIMEOUT)
-                time.sleep(2)  # Allow the board to stabilize after port open
+                # Following test.py's strategy, we verify we can open the port
+                with serial.Serial(self.port, self.baud, timeout=RESPONSE_TIMEOUT) as com:
+                    pass
+                self._connected = True
                 self.last_error = None
                 return {"ok": True, "message": "Connected", "port": self.port, "baud": self.baud}
             except serial.SerialException as exc:
                 self.last_error = str(exc)
-                self._serial = None
+                self._connected = False
                 return {"ok": False, "message": str(exc), "port": self.port}
 
     def disconnect(self) -> dict:
         """Close the serial connection."""
         with self._lock:
-            if not self.is_connected:
-                return {"ok": True, "message": "Already disconnected"}
-
-            self._serial.close()
-            self._serial = None
+            self._connected = False
             return {"ok": True, "message": "Disconnected"}
 
     def send_command(self, command: str, wait: float = COMMAND_DELAY) -> dict:
@@ -93,36 +88,35 @@ class RapiroSerialClient:
             if not self.is_connected:
                 return {"ok": False, "message": "Serial port not connected"}
 
+            print(f"Enviando: {command}")
             try:
-                self._serial.reset_input_buffer()
-                self._serial.write(f"{command}\r".encode("utf-8"))
-                time.sleep(wait)
-                response = self._read_response()
-                self.last_error = None
-                return {
-                    "ok": True,
-                    "command": command,
-                    "response": response,
-                }
+                with serial.Serial(self.port, self.baud, timeout=RESPONSE_TIMEOUT) as com:
+                    time.sleep(0.5)
+                    com.write(f"{command}\r".encode("ascii"))
+                    com.flush()
+                    
+                    # Read response if available (non-blocking, best effort)
+                    chunks = []
+                    # Wait a tiny bit to check for response bytes, then read
+                    time.sleep(0.1)
+                    if com.in_waiting > 0:
+                        chunks.append(com.read(com.in_waiting).decode("utf-8", errors="replace"))
+                    
+                    # Complete the remaining sleep
+                    remaining_wait = max(0.0, wait - 0.1)
+                    if remaining_wait > 0:
+                        time.sleep(remaining_wait)
+                    
+                    response = "".join(chunks).strip()
+                    self.last_error = None
+                    return {
+                        "ok": True,
+                        "command": command,
+                        "response": response,
+                    }
             except serial.SerialException as exc:
                 self.last_error = str(exc)
                 return {"ok": False, "message": str(exc), "command": command}
-
-    def _read_response(self) -> str:
-        """Read any pending response bytes from the serial port."""
-        if not self.is_connected:
-            return ""
-
-        chunks = []
-        deadline = time.time() + RESPONSE_TIMEOUT
-        while time.time() < deadline:
-            waiting = self._serial.in_waiting
-            if waiting > 0:
-                chunks.append(self._serial.read(waiting).decode("utf-8", errors="replace"))
-                deadline = time.time() + 0.2
-            else:
-                time.sleep(0.05)
-        return "".join(chunks).strip()
 
     def test_connection(self) -> dict:
         """Ping the board using the buffer status command (#C)."""
@@ -144,12 +138,14 @@ class RapiroSerialClient:
         }
 
     def build_servo_command(self, servo_id: int, angle: int, duration_ms: int = 500) -> str:
-        """Build a pose command for a single servo."""
-        return f"#PS{servo_id:02d}A{angle:03d}T{duration_ms:03d}"
+        """Build a pose command for a single servo (duration converted to tenths of a second)."""
+        tenths = max(0, int(duration_ms / 100))
+        return f"#PS{servo_id:02d}A{angle:03d}T{tenths:03d}"
 
     def build_led_command(self, red: int, green: int, blue: int, duration_ms: int = 500) -> str:
-        """Build a pose command for the eye RGB LEDs."""
-        return f"#PR{red:03d}G{green:03d}B{blue:03d}T{duration_ms:03d}"
+        """Build a pose command for the eye RGB LEDs (duration converted to tenths of a second)."""
+        tenths = max(0, int(duration_ms / 100))
+        return f"#PR{red:03d}G{green:03d}B{blue:03d}T{tenths:03d}"
 
     def status(self) -> dict:
         """Return current client status."""

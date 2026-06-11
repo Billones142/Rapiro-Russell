@@ -366,7 +366,7 @@
     <header>
         <div class="logo-area">
             <h1>Rapiro Control Panel</h1>
-            <p>Monitoreo e interfaz directa GPIO</p>
+            <p>Monitoreo y comunicación serie UART</p>
         </div>
         <div class="status-badge">
             <div id="status-indicator" class="status-indicator"></div>
@@ -568,7 +568,7 @@
             if (data.connected) {
                 // Actualizar los sliders con los valores actuales si no los estamos arrastrando
                 // (Para simplificar, solo actualizamos si hay un cambio grande o si queremos estar al día)
-                log("STATUS", `Pines GPIO activos en puerto serie lógico ${data.port}`);
+                log("STATUS", `Comunicación serie activa en puerto ${data.port}`);
             }
         } catch (err) {
             updateConnectionUI(false);
@@ -591,7 +591,7 @@
 
         if (connected) {
             indicator.className = "status-indicator connected";
-            statusText.innerText = "Conectado (GPIO)";
+            statusText.innerText = "Conectado (Serie)";
             toggleBtn.innerText = "Desconectar";
             toggleBtn.className = "btn btn-rose";
         } else {

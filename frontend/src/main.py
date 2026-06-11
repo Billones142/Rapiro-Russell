@@ -80,7 +80,7 @@ API_ROUTES = {
         "/serial/test": lambda _h, _q, _b: test_serial(client),
         "/command": lambda _h, _q, b: client.send_command(
             b.get("command", ""),
-            wait=float(b.get("wait", 0.5)),
+            wait=float(b.get("wait", 1.8)),
         ),
         "/test/servos": lambda _h, _q, b: test_all_servos(
             client, duration_ms=int(b.get("duration_ms", 400))
