@@ -1,30 +1,49 @@
 #!/bin/bash
-# Configura el perfil para que la CLI local use las credenciales del compañero
+# Forzar formato numérico universal (evita problemas de comas en los decimales)
+export LC_ALL=C
 export AWS_DEFAULT_REGION="sa-east-1"
 
 while true; do
-    # 1. Extraer temperatura de la Raspberry Pi en miligrados y pasar a Celsius
-    RAW_TEMP=$(cat /sys/class/thermal/thermal_zone0/temp)
+    # 1. Temperatura de la Raspberry Pi
+    RAW_TEMP=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
     CPU_TEMP=$(echo "scale=2; $RAW_TEMP / 1000" | bc)
 
-    # 2. Medir latencia de red haciendo ping al backend de AWS (IP interna o gateway)
-    LATENCY=$(ping -c 1 31.13.192.1 | diregex | awk -F '/' 'END {print $5}')
+    # 2. Latencia de red hacia AWS San Pablo
+    LATENCY=$(ping -c 1 sa-east-1.ec2.amazonaws.com | grep 'rtt' | cut -d'/' -f5)
     if [ -z "$LATENCY" ]; then LATENCY=0; fi
 
-    # 3. Enviar temperatura a AWS CloudWatch bajo un namespace personalizado
+    # 3. Uso de CPU (Filtro nativo ultraestable con top)
+    CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}')
+
+    # 4. Uso de Memoria RAM en porcentaje
+    RAM_USAGE=$(free | awk '/Mem:/ {print $3/$2 * 100.0}')
+
+    # --- Envío de Métricas a AWS CloudWatch ---
+
     aws cloudwatch put-metric-data \
       --namespace "RAPIRO/PercepcionEdge" \
       --metric-name "Temperatura_CPU" \
       --value "$CPU_TEMP" \
       --unit "Count"
 
-    # 4. Enviar latencia de red a AWS CloudWatch
     aws cloudwatch put-metric-data \
       --namespace "RAPIRO/PercepcionEdge" \
       --metric-name "Latencia_Red_Cloud" \
       --value "$LATENCY" \
       --unit "Milliseconds"
 
-    echo "Métricas enviadas: Temp=$CPU_TEMP°C, Latencia=${LATENCY}ms. Durmiendo 60s..."
-    sleep 60
+    aws cloudwatch put-metric-data \
+      --namespace "RAPIRO/PercepcionEdge" \
+      --metric-name "Rapiro_Uso_CPU" \
+      --value "$CPU_USAGE" \
+      --unit "Percent"
+
+    aws cloudwatch put-metric-data \
+      --namespace "RAPIRO/PercepcionEdge" \
+      --metric-name "Rapiro_Uso_RAM" \
+      --value "$RAM_USAGE" \
+      --unit "Percent"
+
+    echo "[$(date +%T)] Datos enviados -> Temp: ${CPU_TEMP}°C | Latencia: ${LATENCY}ms | CPU: ${CPU_USAGE}% | RAM: ${RAM_USAGE}%"
+    sleep 30
 done
