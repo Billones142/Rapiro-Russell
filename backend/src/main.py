@@ -87,4 +87,5 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     # Ejecuta en puerto 8000 por defecto
-    uvicorn.run("main.py:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
