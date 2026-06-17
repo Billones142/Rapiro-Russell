@@ -89,10 +89,10 @@ if len(imagenes) == 0:
 print("Ejemplos:", [os.path.basename(p) for p in imagenes[:5]])
 
 # Encontrar labels.csv
-LABELS_CSV = os.path.join(BASE_DIR, "labels.csv")
+LABELS_CSV = os.path.join(BASE_DIR, "dataset-tageado.csv")
 if not os.path.isfile(LABELS_CSV):
     # Intentar buscar dentro de la carpeta de imágenes descomprimidas
-    temp_csv = os.path.join(DESTINO_IMAGENES, "labels.csv")
+    temp_csv = os.path.join(DESTINO_IMAGENES, "dataset-tageado.csv")
     if os.path.isfile(temp_csv):
         LABELS_CSV = temp_csv
     else:
@@ -100,7 +100,7 @@ if not os.path.isfile(LABELS_CSV):
         found_csv = False
         for root, dirs, files in os.walk(DESTINO_IMAGENES):
             for file in files:
-                if file.lower() == "labels.csv":
+                if file.lower() == "dataset-tageado.csv":
                     LABELS_CSV = os.path.join(root, file)
                     found_csv = True
                     break
@@ -113,7 +113,7 @@ if not os.path.isfile(LABELS_CSV):
     if csv_files:
         LABELS_CSV = os.path.join(BASE_DIR, csv_files[0])
     else:
-        print("Error: No se encontró el archivo labels.csv.")
+        print("Error: No se encontró el archivo dataset-tageado.csv.")
         exit(1)
 
 print(f"Usando archivo de etiquetas: {LABELS_CSV}")
@@ -137,21 +137,70 @@ if (~valid).any():
     print(df.loc[~valid, "morphology"].value_counts())
 df = df[valid].copy()
 
-# Determinar el directorio de imágenes real comparando con los nombres del CSV
-sample_files = df["image_filename"].head(5).tolist()
-found_dir = DESTINO_IMAGENES
-for root, dirs, files in os.walk(DESTINO_IMAGENES):
-    if any(f in files for f in sample_files):
-        found_dir = root
-        break
-IMAGES_DIR = found_dir
-print(f"Directorio de imágenes resuelto: {IMAGES_DIR}")
+# Construir un mapa de búsqueda de archivos en disco para admitir nombres con/sin extensión o con subcarpetas
+print("Escaneando imágenes descomprimidas...")
+image_extensions = (".png", ".jpg", ".jpeg")
+all_image_paths = []
+for root, _, files in os.walk(DESTINO_IMAGENES):
+    for file in files:
+        if file.lower().endswith(image_extensions):
+            all_image_paths.append(os.path.join(root, file))
 
-# Verificar que las imágenes existan en disco
-df["path"] = df["image_filename"].apply(lambda f: os.path.join(IMAGES_DIR, f))
-exists = df["path"].apply(os.path.isfile)
+print(f"Total de imágenes físicas encontradas en disco: {len(all_image_paths)}")
+
+# Índices para búsqueda rápida
+basename_to_paths = {}
+basename_without_ext_to_paths = {}
+for path in all_image_paths:
+    bname = os.path.basename(path).lower()
+    name_no_ext, _ = os.path.splitext(bname)
+    
+    if bname not in basename_to_paths:
+        basename_to_paths[bname] = []
+    basename_to_paths[bname].append(path)
+    
+    if name_no_ext not in basename_without_ext_to_paths:
+        basename_without_ext_to_paths[name_no_ext] = []
+    basename_without_ext_to_paths[name_no_ext].append(path)
+
+def get_real_path(filename):
+    if not isinstance(filename, str):
+        return None
+    
+    # Normalizar separadores y limpiar espacios
+    clean_filename = filename.replace("\\", "/").strip().lower()
+    bname = os.path.basename(clean_filename)
+    bname_no_ext, ext = os.path.splitext(bname)
+    
+    # 1. Intentar búsqueda con extensión (si el CSV la tiene)
+    paths = None
+    if ext:
+        paths = basename_to_paths.get(bname)
+        
+    # 2. Intentar búsqueda sin extensión
+    if not paths:
+        paths = basename_without_ext_to_paths.get(clean_filename)
+    if not paths:
+        paths = basename_without_ext_to_paths.get(bname_no_ext)
+        
+    if not paths:
+        return None
+        
+    if len(paths) == 1:
+        return paths[0]
+        
+    # Si hay duplicados, priorizar el que coincida mejor con la ruta relativa del CSV
+    for path in paths:
+        if path.lower().endswith(clean_filename):
+            return path
+            
+    return paths[0]
+
+# Mapear las imágenes del CSV
+df["path"] = df["image_filename"].apply(get_real_path)
+exists = df["path"].notna()
 if (~exists).any():
-    print(f"{(~exists).sum()} imágenes del CSV no se encontraron en disco (se descartan).")
+    print(f"{(~exists).sum()} imágenes del CSV no se encontraron en el zip descomprimido (se descartan).")
 df = df[exists].copy()
 
 if len(df) == 0:
