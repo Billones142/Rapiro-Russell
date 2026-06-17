@@ -22,6 +22,18 @@ SEED = 42
 tf.random.set_seed(SEED)
 np.random.seed(SEED)
 
+# Configurar GPU en TensorFlow si está disponible
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"¡GPU detectada! Usando para entrenar: {[g.name for g in gpus]}")
+    except RuntimeError as e:
+        print(f"Error al inicializar la GPU: {e}")
+else:
+    print("No se detectó ninguna GPU compatible. Se usará la CPU.")
+
 # Find ZIP file in script directory
 NOMBRE_ZIP = os.path.join(BASE_DIR, "training-dataset.zip")
 if not os.path.exists(NOMBRE_ZIP):
