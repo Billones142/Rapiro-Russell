@@ -1,13 +1,15 @@
 import os
 import json
 import asyncio
-from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
+import tempfile
+from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 
 from expert_system import ExpertSystem
+from vision.inferencia import predecir_morfologia
 
 app = FastAPI(
     title="SEADD Backend Server",
@@ -78,10 +80,6 @@ class SymptomInput(BaseModel):
     duration: float
     stress: bool
 
-class VisionStubResponse(BaseModel):
-    morphology: str
-    color: str
-    confidence: float
 
 @app.get("/", response_class=HTMLResponse)
 async def get_dashboard(request: Request):
@@ -116,22 +114,27 @@ async def run_inference(inputs: SymptomInput):
         await manager.send_to_rapiro({"type": "state", "value": "waiting"})
         return JSONResponse(status_code=500, content={"ok": False, "message": str(e)})
 
-@app.post("/api/vision/stub", response_model=VisionStubResponse)
-async def vision_stub(request: Request):
-    """Stub temporal del modelo de visión. Notifica la animación al robot."""
+@app.post("/api/predict")
+async def predict(image: UploadFile = File(...)):
+    """Clasifica la morfología de una lesión cutánea a partir de una imagen."""
     await manager.send_to_rapiro({"type": "state", "value": "analyzing"})
-    
-    # Simular el retraso del procesamiento de red neuronal (1.5 segundos)
-    await asyncio.sleep(1.5)
-    
-    # Retornar al estado normal de espera para la doble entrada
-    await manager.send_to_rapiro({"type": "state", "value": "waiting"})
-    
-    return {
-        "morphology": "escama",
-        "color": "blanco nacarado",
-        "confidence": 0.92
-    }
+
+    tmp_path = None
+    try:
+        suffix = os.path.splitext(image.filename or "")[1] or ".jpg"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(await image.read())
+            tmp_path = tmp.name
+
+        prediction = await asyncio.to_thread(predecir_morfologia, tmp_path)
+        await manager.send_to_rapiro({"type": "state", "value": "waiting"})
+        return JSONResponse(content={"ok": True, "prediction": prediction})
+    except Exception as e:
+        await manager.send_to_rapiro({"type": "state", "value": "waiting"})
+        return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 @app.get("/api/health")
 async def health_check():

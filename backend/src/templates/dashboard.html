@@ -333,6 +333,11 @@
             background: var(--bg-card-hover);
         }
 
+        .select-input.low-confidence {
+            border-color: var(--accent-warning, #f59e0b);
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+        }
+
         .checkbox-group {
             flex-direction: row;
             align-items: center;
@@ -955,15 +960,26 @@
             document.getElementById("ai-status-badge").innerText = "Procesando...";
             document.getElementById("ai-status-badge").className = "badge badge-warning";
 
-            try {
-                const res = await fetch(`${API_URL}/api/vision/stub`, { method: 'POST' });
-                const data = await res.json();
-                
-                // Cargar predicción de la IA en el panel de evaluación clínica
-                document.getElementById("cli-morphology").value = data.morphology;
-                document.getElementById("cli-color").value = data.color;
+            // El modelo solo conoce 3 clases; las otras 2 son de carga manual exclusiva.
+            const MODEL_TO_FORM_MORPHOLOGY = { macula: "mácula", papula: "pápula", escama: "escama" };
+            const cliMorphologySelect = document.getElementById("cli-morphology");
 
-                document.getElementById("ai-status-badge").innerText = `Vision OK (${Math.round(data.confidence*100)}%)`;
+            try {
+                const frameRes = await fetch(document.getElementById("video-feed-img").src);
+                const imageBlob = await frameRes.blob();
+
+                const formData = new FormData();
+                formData.append("image", imageBlob, "capture.jpg");
+
+                const res = await fetch(`${API_URL}/api/predict`, { method: 'POST', body: formData });
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || "Fallo de inferencia");
+
+                const { morfologia, confianza } = data.prediction;
+                cliMorphologySelect.value = MODEL_TO_FORM_MORPHOLOGY[morfologia] || morfologia;
+                cliMorphologySelect.classList.toggle("low-confidence", confianza < 0.6);
+
+                document.getElementById("ai-status-badge").innerText = `Vision OK (${Math.round(confianza*100)}%)`;
                 document.getElementById("ai-status-badge").className = "badge badge-success";
             } catch (err) {
                 console.error(err);
