@@ -154,22 +154,56 @@ def start_websocket_client():
         # Hilo secundario para transmitir video continuamente al backend en binario (JPEG)
         def video_stream_loop():
             camera = None
-            if cv2 is not None:
-                camera = cv2.VideoCapture(0)
-                if not camera.isOpened():
+            print("[Camera Debug] Iniciando verificación de cámara...")
+            
+            if cv2 is None:
+                print("[Camera Debug] AVISO: 'opencv-python' (cv2) no está instalado. No se puede usar la webcam física.")
+            else:
+                print("[Camera Debug] OpenCV está instalado con éxito. Intentando abrir webcam física en index 0 (/dev/video0)...")
+                try:
+                    camera = cv2.VideoCapture(0)
+                    if not camera.isOpened():
+                        print("[Camera Debug] ERROR: No se pudo abrir la webcam física en index 0. ¿Está ocupada o desconectada?")
+                        camera = None
+                    else:
+                        width = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
+                        height = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                        print(f"[Camera Debug] EXITO: Cámara física abierta correctamente. Resolución: {width}x{height}")
+                except Exception as cam_err:
+                    print(f"[Camera Debug] EXPORT EXCEPTION al abrir la cámara: {cam_err}")
                     camera = None
 
+            if Image is None:
+                print("[Camera Debug] AVISO: 'Pillow' (PIL) no está instalado. La simulación de imagen no estará disponible.")
+
             try:
+                first_frame_logged = False
                 while ws.keep_running:
                     frame_bytes = None
+                    
                     if camera is not None:
                         success, frame = camera.read()
                         if success:
+                            if not first_frame_logged:
+                                print("[Camera Debug] Frame capturado con éxito de la cámara física. Codificando a JPEG...")
                             ret, buffer = cv2.imencode('.jpg', frame)
                             if ret:
                                 frame_bytes = buffer.tobytes()
+                                if not first_frame_logged:
+                                    print(f"[Camera Debug] JPEG codificado correctamente ({len(frame_bytes)} bytes). Enviando...")
+                                    first_frame_logged = True
+                            else:
+                                if not first_frame_logged:
+                                    print("[Camera Debug] ERROR: Falló la codificación JPEG de OpenCV.")
+                        else:
+                            print("[Camera Debug] ERROR: Falló la lectura del frame de la cámara física (camera.read() devolvió False).")
+                            camera.release()
+                            camera = None # Forzar fallback
                     
                     if frame_bytes is None:
+                        if not first_frame_logged:
+                            print("[Camera Debug] Usando generador de imágenes de simulación (Pillow)...")
+                            first_frame_logged = True
                         frame_bytes = make_mock_frame()
 
                     if frame_bytes:
@@ -182,6 +216,7 @@ def start_websocket_client():
                 print(f"[WS Client] Error en loop de transmisión: {stream_err}")
             finally:
                 if camera is not None:
+                    print("[Camera Debug] Liberando cámara física...")
                     camera.release()
 
         threading.Thread(target=video_stream_loop, daemon=True).start()
