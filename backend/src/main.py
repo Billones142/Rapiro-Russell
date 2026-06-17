@@ -1,20 +1,21 @@
 import os
-from fastapi import FastAPI, Request, HTTPException
+import json
+import asyncio
+from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from expert_system import ExpertSystem
 
 app = FastAPI(
     title="SEADD Backend Server",
-    description="Servidor de inferencia y dashboard para el Sistema Experto Diagnóstico Dermatológico.",
-    version="1.0.0"
+    description="Servidor de inferencia y dashboard para el Sistema Experto Diagnóstico Dermatológico con WebSockets.",
+    version="1.1.0"
 )
 
-# Configurar CORS para permitir comunicación desde cualquier origen (e.g. Raspberry Pi o interfaz de desarrollo)
+# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,6 +26,48 @@ app.add_middleware(
 
 # Instancia del Sistema Experto
 expert_system = ExpertSystem()
+
+# Gestor de Conexiones WebSocket (Reverse Tunneling)
+class ConnectionManager:
+    def __init__(self):
+        self.rapiro_ws: Optional[WebSocket] = None
+        self.dashboard_wss: List[WebSocket] = []
+
+    async def connect_rapiro(self, websocket: WebSocket):
+        await websocket.accept()
+        self.rapiro_ws = websocket
+
+    def disconnect_rapiro(self):
+        self.rapiro_ws = None
+
+    async def connect_dashboard(self, websocket: WebSocket):
+        await websocket.accept()
+        self.dashboard_wss.append(websocket)
+
+    def disconnect_dashboard(self, websocket: WebSocket):
+        if websocket in self.dashboard_wss:
+            self.dashboard_wss.remove(websocket)
+
+    async def send_to_rapiro(self, message: dict):
+        """Envía un comando JSON al robot Rapiro."""
+        if self.rapiro_ws:
+            try:
+                await self.rapiro_ws.send_json(message)
+            except Exception:
+                self.rapiro_ws = None
+
+    async def broadcast_to_dashboards(self, message: Any, is_binary: bool = False):
+        """Retransmite datos (JSON o binario de cámara) a todos los dashboards conectados."""
+        for ws in self.dashboard_wss:
+            try:
+                if is_binary:
+                    await ws.send_bytes(message)
+                else:
+                    await ws.send_json(message)
+            except Exception:
+                self.dashboard_wss.remove(ws)
+
+manager = ConnectionManager()
 
 # Modelos de Pydantic
 class SymptomInput(BaseModel):
@@ -52,7 +95,10 @@ async def get_dashboard(request: Request):
 
 @app.post("/api/infer")
 async def run_inference(inputs: SymptomInput):
-    """Ejecuta la inferencia experta con el motor híbrido."""
+    """Ejecuta la inferencia experta y cambia el estado de los LEDs del robot."""
+    # Notificar estado al robot
+    await manager.send_to_rapiro({"type": "state", "value": "inferring"})
+    
     try:
         result = expert_system.infer(
             location=inputs.location,
@@ -62,18 +108,25 @@ async def run_inference(inputs: SymptomInput):
             duration=inputs.duration,
             stress=inputs.stress
         )
+        # Inferencia completada con éxito
+        await manager.send_to_rapiro({"type": "state", "value": "result_ready"})
         return JSONResponse(content=result)
     except Exception as e:
+        # Revertir a espera en caso de error
+        await manager.send_to_rapiro({"type": "state", "value": "waiting"})
         return JSONResponse(status_code=500, content={"ok": False, "message": str(e)})
 
 @app.post("/api/vision/stub", response_model=VisionStubResponse)
 async def vision_stub(request: Request):
-    """
-    Stub temporal para el modelo de visión.
-    Simula la clasificación de morfología y color con sus niveles de confianza.
-    """
-    # En el futuro, este endpoint procesará una imagen binaria recibida.
-    # Por ahora, simulamos una detección de alta confianza para integrar el flujo.
+    """Stub temporal del modelo de visión. Notifica la animación al robot."""
+    await manager.send_to_rapiro({"type": "state", "value": "analyzing"})
+    
+    # Simular el retraso del procesamiento de red neuronal (1.5 segundos)
+    await asyncio.sleep(1.5)
+    
+    # Retornar al estado normal de espera para la doble entrada
+    await manager.send_to_rapiro({"type": "state", "value": "waiting"})
+    
     return {
         "morphology": "escama",
         "color": "blanco nacarado",
@@ -84,8 +137,47 @@ async def vision_stub(request: Request):
 async def health_check():
     return {"status": "ok", "message": "SEADD Backend is running."}
 
+# --- ENDPOINTS WEBSOCKET (TÚNEL REVERSO) ---
+
+@app.websocket("/ws/rapiro")
+async def websocket_rapiro(websocket: WebSocket):
+    """Canal persistente para la Raspberry Pi (envía cámara y telemetría, recibe comandos)."""
+    await manager.connect_rapiro(websocket)
+    print("Conexión WebSocket establecida con Rapiro.")
+    # Notificar a los dashboards
+    await manager.broadcast_to_dashboards({"type": "rapiro_status", "connected": True})
+    
+    try:
+        while True:
+            # Rapiro puede enviar imágenes (binario) o telemetría (texto)
+            message = await websocket.receive()
+            if "bytes" in message:
+                # Transmitir el frame de video a los dashboards
+                await manager.broadcast_to_dashboards(message["bytes"], is_binary=True)
+            elif "text" in message:
+                data = json.loads(message["text"])
+                await manager.broadcast_to_dashboards(data)
+    except WebSocketDisconnect:
+        manager.disconnect_rapiro()
+        print("Conexión WebSocket con Rapiro cerrada.")
+        await manager.broadcast_to_dashboards({"type": "rapiro_status", "connected": False})
+
+@app.websocket("/ws/dashboard")
+async def websocket_dashboard(websocket: WebSocket):
+    """Canal para el navegador del médico (recibe cámara, envía acciones del robot)."""
+    await manager.connect_dashboard(websocket)
+    # Enviar estado actual de Rapiro al conectar
+    is_connected = manager.rapiro_ws is not None
+    await websocket.send_json({"type": "rapiro_status", "connected": is_connected})
+    
+    try:
+        while True:
+            data = await websocket.receive_json()
+            # Si el médico ejecuta un comando en el dashboard, se encamina a Rapiro
+            await manager.send_to_rapiro(data)
+    except WebSocketDisconnect:
+        manager.disconnect_dashboard(websocket)
+
 if __name__ == "__main__":
     import uvicorn
-    # Ejecuta en puerto 8000 por defecto
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-

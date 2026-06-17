@@ -203,7 +203,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0, 0, 0, 0.65);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -211,6 +211,7 @@
             text-align: center;
             padding: 1.5rem;
             transition: var(--transition);
+            z-index: 10;
         }
 
         .video-overlay.hidden {
@@ -257,44 +258,11 @@
             box-shadow: none;
         }
 
-        .btn-danger {
-            background: var(--accent-danger);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-        }
-
         /* Controls card grid */
         .controls-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 0.75rem;
-        }
-
-        .ip-input-group {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .input-text {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 0.5rem 0.75rem;
-            border-radius: 0.5rem;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-            flex: 1;
-            transition: var(--transition);
-        }
-
-        .input-text:focus {
-            border-color: var(--accent-primary);
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
         }
 
         /* Forms Layout */
@@ -591,7 +559,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            filter: brightness(0.8) contrast(1.1);
+            filter: brightness(0.9) contrast(1.05);
         }
 
         .simulation-banner {
@@ -635,32 +603,14 @@
         <div class="connection-status">
             <div class="status-badge">
                 <span class="status-dot disconnected" id="pi-status-dot"></span>
-                <span id="pi-status-text">Raspberry Pi: Desconectada</span>
+                <span id="pi-status-text">Rapiro: Desconectado</span>
             </div>
         </div>
     </header>
 
     <main>
-        <!-- Left Column: Robot & Perception controls -->
+        <!-- Left Column: Robot & Camera feed -->
         <div style="display: flex; flex-direction: column; gap: 2rem;">
-            <!-- Robot Linkage Card -->
-            <div class="card">
-                <div class="card-title">
-                    <span>⚙️ Configuración del Robot</span>
-                </div>
-                <div class="form-group">
-                    <label>Dirección IP de Rapiro (Raspberry Pi)</label>
-                    <div class="ip-input-group">
-                        <input type="text" class="input-text" id="pi-ip-input" placeholder="e.g. 192.168.1.100" value="localhost">
-                        <input type="text" class="input-text" id="pi-port-input" placeholder="Puerto" value="8080" style="max-width: 80px;">
-                    </div>
-                </div>
-                <div class="controls-grid">
-                    <button class="btn btn-secondary" id="btn-connect-pi" onclick="checkPiConnection()">Probar Link</button>
-                    <button class="btn btn-secondary" id="btn-test-serial" onclick="sendRapiroTest()">Ping Serial</button>
-                </div>
-            </div>
-
             <!-- Vision / Camera Card -->
             <div class="card">
                 <div class="card-title">
@@ -668,21 +618,24 @@
                     <span class="badge badge-info" id="camera-mode-badge">Simulador</span>
                 </div>
                 <div class="video-container" id="video-frame-container">
-                    <!-- Default Simulated Lesion Image -->
                     <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><circle cx='200' cy='150' r='50' fill='%23991b1b' opacity='0.7' filter='blur(10px)'/><ellipse cx='210' cy='140' rx='35' ry='25' fill='%23fca5a5' opacity='0.5' filter='blur(15px)'/><path d='M180,120 Q200,160 220,130' stroke='%23ffffff' stroke-width='3' fill='none' opacity='0.4' filter='blur(1px)'/></svg>" 
                          class="mock-image" id="video-feed-img" alt="Video stream">
-                    <div class="simulation-banner" id="sim-banner">Imagen Simulada</div>
+                    <div class="simulation-banner" id="sim-banner">Simulación</div>
+                    
                     <div class="video-overlay" id="video-overlay-msg">
-                        <p style="margin-bottom: 1rem; font-size: 0.9rem;">El feed de la cámara requiere conexión con Rapiro.</p>
-                        <button class="btn btn-secondary btn-small" onclick="enableMockCamera()">Activar Simulador</button>
+                        <p style="margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">Esperando conexión del robot...</p>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem; max-width: 80%;">
+                            Rapiro se conectará dinámicamente desde el consultorio.
+                        </p>
+                        <button class="btn btn-secondary btn-small" onclick="enableMockCamera()">Usar Simulador Local</button>
                     </div>
                 </div>
                 <div class="controls-grid">
                     <button class="btn" id="btn-capture" onclick="triggerCapture()">
                         <span>📸 Capturar Imagen</span>
                     </button>
-                    <button class="btn btn-secondary" id="btn-toggle-stream" onclick="toggleStreamSource()">
-                        <span>Feed Real</span>
+                    <button class="btn btn-secondary" id="btn-mock-toggle" onclick="enableMockCamera()">
+                        <span>Reset Vista</span>
                     </button>
                 </div>
             </div>
@@ -690,15 +643,17 @@
             <!-- Rapiro Physical Actions -->
             <div class="card">
                 <div class="card-title">
-                    <span>🤖 Movimientos de Rapiro</span>
+                    <span>🤖 Control del Robot</span>
                 </div>
                 <div class="controls-grid">
                     <button class="btn btn-secondary" onclick="sendRapiroMotion(0)">Home / Stop</button>
-                    <button class="btn btn-secondary" onclick="sendRapiroMotion(5)">Saludo (Verde)</button>
+                    <button class="btn btn-secondary" onclick="sendRapiroMotion(5)">Saludo</button>
                     <button class="btn btn-secondary" onclick="sendRapiroMotion(7)">Ambas Manos</button>
-                    <button class="btn btn-secondary" onclick="sendRapiroMotion(8)">Adiós (Rojo)</button>
+                    <button class="btn btn-secondary" onclick="sendRapiroMotion(8)">Adiós</button>
                 </div>
-                <button class="btn btn-secondary" onclick="cycleEyesLed()">Test Ciclo de Ojos (RGB)</button>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 0.5rem;">
+                    *Los efectos visuales de los LEDs se adaptan automáticamente según el estado de la consulta.
+                </p>
             </div>
         </div>
 
@@ -819,7 +774,7 @@
                 </div>
             </div>
 
-            <!-- Results Panel Card (Hidden initially until inference is run) -->
+            <!-- Results Panel Card -->
             <div class="card id-glow-card hidden" id="results-card">
                 <div class="card-title">
                     <span>💡 Orientación Diagnóstica Diferencial</span>
@@ -888,20 +843,81 @@
     </main>
 
     <script>
-        const API_URL = ""; // Backend local
-        let RAPIRO_IP = "localhost:8080";
-        let isCameraStreaming = false;
+        const API_URL = window.location.origin;
+        let ws;
+        let objectUrl = null;
 
-        // Auto-sintonizar el estado del feed de la cámara
+        // Auto-conectar WebSocket al cargar la página
         window.addEventListener('load', () => {
-            updatePiHost();
+            connectWebSocket();
             enableMockCamera();
         });
 
-        function updatePiHost() {
-            const ip = document.getElementById("pi-ip-input").value;
-            const port = document.getElementById("pi-port-input").value;
-            RAPIRO_IP = `${ip}:${port}`;
+        function connectWebSocket() {
+            const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws/dashboard`;
+            
+            console.log(`Conectando WebSocket a: ${wsUrl}`);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log("Conectado al servidor de WebSocket (Dashboard).");
+            };
+
+            ws.onmessage = (event) => {
+                if (event.data instanceof Blob) {
+                    // Es un frame de video binario de Rapiro
+                    if (objectUrl) {
+                        URL.revokeObjectURL(objectUrl);
+                    }
+                    objectUrl = URL.createObjectURL(event.data);
+                    document.getElementById("video-feed-img").src = objectUrl;
+                    document.getElementById("video-overlay-msg").classList.add("hidden");
+                    document.getElementById("sim-banner").classList.add("hidden");
+                    
+                    const badge = document.getElementById("camera-mode-badge");
+                    badge.innerText = "Cámara Real";
+                    badge.className = "badge badge-success";
+                } else {
+                    // Es telemetría JSON
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === "rapiro_status") {
+                            setPiConnected(data.connected);
+                        }
+                    } catch (e) {
+                        console.error("Error al procesar mensaje JSON de WebSocket", e);
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                console.log("WebSocket cerrado. Reintentando en 3 segundos...");
+                setPiConnected(false);
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = (err) => {
+                console.error("WebSocket error:", err);
+                ws.close();
+            };
+        }
+
+        function setPiConnected(connected) {
+            const dot = document.getElementById("pi-status-dot");
+            const label = document.getElementById("pi-status-text");
+            const overlay = document.getElementById("video-overlay-msg");
+            
+            if (connected) {
+                dot.className = "status-dot connected";
+                label.innerText = "Rapiro: Conectado (Websocket)";
+                overlay.classList.add("hidden");
+            } else {
+                dot.className = "status-dot disconnected";
+                label.innerText = "Rapiro: Desconectado";
+                overlay.classList.remove("hidden");
+                enableMockCamera();
+            }
         }
 
         function syncPatientToClinical() {
@@ -913,99 +929,24 @@
             document.getElementById("cli-stress").checked = document.getElementById("pat-stress").checked;
         }
 
-        async function checkPiConnection() {
-            updatePiHost();
-            const btn = document.getElementById("btn-connect-pi");
-            btn.innerHTML = '<span class="loading-ring"></span> Conectando...';
-            try {
-                const response = await fetch(`http://${RAPIRO_IP}/health`, { method: 'GET' });
-                const data = await response.json();
-                if (data.ok) {
-                    setPiConnected(true, "Rapiro Pi: Conectada");
-                } else {
-                    setPiConnected(false, "Rapiro Pi: Error de respuesta");
-                }
-            } catch (err) {
-                setPiConnected(false, "Rapiro Pi: Desconectada");
-            } finally {
-                btn.innerText = "Probar Link";
-            }
-        }
-
-        function setPiConnected(connected, text) {
-            const dot = document.getElementById("pi-status-dot");
-            const label = document.getElementById("pi-status-text");
-            if (connected) {
-                dot.className = "status-dot connected";
-                label.innerText = text;
+        function sendRapiroMotion(motionId) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "command", cmd: `#M${motionId}` }));
             } else {
-                dot.className = "status-dot disconnected";
-                label.innerText = text;
-            }
-        }
-
-        async function sendRapiroTest() {
-            updatePiHost();
-            try {
-                const res = await fetch(`http://${RAPIRO_IP}/serial/test`, { method: 'POST' });
-                const data = await res.json();
-                alert(data.message || "Test completado");
-            } catch (e) {
-                alert(`Error al conectar con el robot: ${e.message}`);
-            }
-        }
-
-        async function sendRapiroMotion(motionId) {
-            updatePiHost();
-            try {
-                await fetch(`http://${RAPIRO_IP}/test/motions/${motionId}`, { method: 'POST' });
-            } catch (e) {
-                console.error("No se pudo enviar movimiento a Rapiro", e);
-            }
-        }
-
-        async function cycleEyesLed() {
-            updatePiHost();
-            try {
-                await fetch(`http://${RAPIRO_IP}/test/neopixel`, { method: 'POST' });
-            } catch (e) {
-                console.error("No se pudo iniciar ciclo de luces en Rapiro", e);
+                alert("WebSocket no conectado al backend.");
             }
         }
 
         function enableMockCamera() {
-            const overlay = document.getElementById("video-overlay-msg");
-            overlay.classList.add("hidden");
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
             const img = document.getElementById("video-feed-img");
             img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><circle cx='200' cy='150' r='50' fill='%23991b1b' opacity='0.7' filter='blur(10px)'/><ellipse cx='210' cy='140' rx='35' ry='25' fill='%23fca5a5' opacity='0.5' filter='blur(15px)'/><path d='M180,120 Q200,160 220,130' stroke='%23ffffff' stroke-width='3' fill='none' opacity='0.4' filter='blur(1px)'/></svg>";
             document.getElementById("camera-mode-badge").innerText = "Simulador";
             document.getElementById("camera-mode-badge").className = "badge badge-info";
             document.getElementById("sim-banner").classList.remove("hidden");
-            isCameraStreaming = false;
-        }
-
-        function toggleStreamSource() {
-            updatePiHost();
-            const btn = document.getElementById("btn-toggle-stream");
-            const img = document.getElementById("video-feed-img");
-            const banner = document.getElementById("sim-banner");
-            const badge = document.getElementById("camera-mode-badge");
-
-            if (!isCameraStreaming) {
-                // Activar feed real
-                img.src = `http://${RAPIRO_IP}/camera/stream`;
-                btn.innerText = "Feed Simulador";
-                banner.classList.add("hidden");
-                badge.innerText = "Cámara Real";
-                badge.className = "badge badge-success";
-                isCameraStreaming = true;
-                
-                // Ocultar overlay si estaba visible
-                document.getElementById("video-overlay-msg").classList.add("hidden");
-            } else {
-                enableMockCamera();
-                btn.innerText = "Feed Real";
-            }
         }
 
         async function triggerCapture() {
@@ -1015,11 +956,10 @@
             document.getElementById("ai-status-badge").className = "badge badge-warning";
 
             try {
-                // Llamar al endpoint stub de visión computacional
                 const res = await fetch(`${API_URL}/api/vision/stub`, { method: 'POST' });
                 const data = await res.json();
                 
-                // Actualizar los inputs de la corrección clínica con los atributos detectados
+                // Cargar predicción de la IA en el panel de evaluación clínica
                 document.getElementById("cli-morphology").value = data.morphology;
                 document.getElementById("cli-color").value = data.color;
 
@@ -1027,7 +967,7 @@
                 document.getElementById("ai-status-badge").className = "badge badge-success";
             } catch (err) {
                 console.error(err);
-                alert("Error al contactar con el modelo de visión. Se mantendrán los valores del especialista.");
+                alert("Error al contactar con el modelo de visión. Se mantendrán los valores actuales.");
                 document.getElementById("ai-status-badge").innerText = "AI Error";
                 document.getElementById("ai-status-badge").className = "badge badge-warning";
             } finally {
@@ -1067,17 +1007,14 @@
             const resultsCard = document.getElementById("results-card");
             resultsCard.classList.remove("hidden");
 
-            // Diagnóstico Principal y Certeza
             document.getElementById("result-main-diag").innerText = data.diagnosis;
             document.getElementById("result-cert-value").innerText = `${data.certainty}%`;
 
-            // Gauge Radial Fill Animation
             const gaugeFill = document.getElementById("result-gauge-fill");
             const circumference = 2 * Math.PI * 70; // 439.8
             const offset = circumference - (data.certainty / 100) * circumference;
             gaugeFill.style.strokeDashoffset = offset;
 
-            // Cambiar color del gauge según certeza
             if (data.certainty > 80) {
                 gaugeFill.style.stroke = "var(--accent-secondary)";
             } else if (data.certainty > 50) {
@@ -1086,12 +1023,10 @@
                 gaugeFill.style.stroke = "var(--accent-danger)";
             }
 
-            // Estado (Agudo/Crónico)
             const stateBadge = document.getElementById("result-state-badge");
             stateBadge.innerText = data.state;
             stateBadge.className = data.state === "Agudo" ? "badge badge-info" : "badge badge-warning";
 
-            // Diagnósticos Alternativos
             const altList = document.getElementById("alternatives-list");
             altList.innerHTML = "";
             if (data.alternatives && data.alternatives.length > 0) {
@@ -1105,7 +1040,6 @@
                 altList.innerHTML = '<p style="font-size:0.8rem; color: var(--text-secondary);">Ningún otro diagnóstico alternativo supera el umbral básico.</p>';
             }
 
-            // Membresías difusas
             const fuzzyBox = document.getElementById("fuzzy-visualizer");
             fuzzyBox.innerHTML = "";
             const pr = data.fuzzy_pruritus.memberships;
@@ -1125,7 +1059,6 @@
                 fuzzyBox.appendChild(div);
             });
 
-            // Recomendaciones
             const recList = document.getElementById("recommendations-list");
             recList.innerHTML = "";
             data.recommendations.forEach(rec => {
@@ -1134,7 +1067,6 @@
                 recList.appendChild(li);
             });
 
-            // Justificación / Reglas disparadas
             const rulesList = document.getElementById("rules-fired-list");
             rulesList.innerHTML = "";
             data.rules_fired.forEach(rule => {
@@ -1151,7 +1083,6 @@
                 rulesList.appendChild(li);
             });
 
-            // Scroll suave hacia los resultados
             resultsCard.scrollIntoView({ behavior: 'smooth' });
         }
     </script>

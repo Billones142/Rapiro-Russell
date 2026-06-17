@@ -15,3 +15,9 @@ variable "instance_name" {
   type        = string
   default     = "MiMaquinaVirtual"
 }
+
+variable "key_name" {
+  description = "Nombre del par de claves SSH registrado en AWS"
+  type        = string
+  default     = "seadd-key"
+}
