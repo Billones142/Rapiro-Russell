@@ -7,8 +7,9 @@ variable "aws_region" {
 variable "instance_type" {
   description = "Tipo de instancia para la máquina virtual"
   type        = string
-  default     = "t2.micro" # Incluida en la capa gratuita (Free Tier)
+  default     = "t3.micro" # Capa gratuita (Free Tier) para la región sa-east-1
 }
+
 
 variable "instance_name" {
   description = "Valor para la etiqueta Name de la instancia"
