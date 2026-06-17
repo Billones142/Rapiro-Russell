@@ -4,6 +4,27 @@ Converted from rapiro_seadd_vision.ipynb.
 """
 
 import os
+import sys
+
+# Auto-configurar LD_LIBRARY_PATH para paquetes CUDA de pip en Linux
+if sys.platform.startswith("linux") and not os.environ.get("_TF_GPU_CONFIGURED"):
+    venv_paths = [p for p in sys.path if "site-packages" in p]
+    nvidia_paths = []
+    for base_path in venv_paths:
+        nvidia_base = os.path.join(base_path, "nvidia")
+        if os.path.isdir(nvidia_base):
+            for root, dirs, files in os.walk(nvidia_base):
+                if "lib" in dirs:
+                    nvidia_paths.append(os.path.join(root, "lib"))
+    if nvidia_paths:
+        current_ld = os.environ.get("LD_LIBRARY_PATH", "")
+        new_ld = ":".join(nvidia_paths)
+        if current_ld:
+            new_ld = f"{new_ld}:{current_ld}"
+        os.environ["LD_LIBRARY_PATH"] = new_ld
+        os.environ["_TF_GPU_CONFIGURED"] = "1"
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
 import zipfile
 import numpy as np
 import pandas as pd
