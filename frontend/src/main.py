@@ -7,8 +7,69 @@ eye LED (RGB) tests and predefined motion commands against the Rapiro robot.
 
 import json
 import os
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
+
+# Camera support imports with fallback
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+try:
+    from PIL import Image, ImageDraw
+    import io
+except ImportError:
+    Image = None
+
+def make_mock_frame(color=(150, 0, 0)):
+    if Image is None:
+        return b""
+    # Create a simulated skin lesion image
+    img = Image.new("RGB", (320, 240), color=(30, 41, 59))
+    draw = ImageDraw.Draw(img)
+    # Simulated lesion (reddish circular pattern)
+    draw.ellipse([110, 70, 210, 170], fill=(153, 27, 27))
+    draw.ellipse([130, 90, 190, 150], fill=(252, 165, 165))
+    
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    return buf.getvalue()
+
+def gen_frames():
+    """Generates JPEG camera frames for HTTP streaming."""
+    # Attempt to open real USB webcam via OpenCV
+    if cv2 is not None:
+        camera = cv2.VideoCapture(0)
+        if camera.isOpened():
+            print("Webcam USB abierta con éxito. Iniciando stream...")
+            try:
+                while True:
+                    success, frame = camera.read()
+                    if not success:
+                        break
+                    ret, buffer = cv2.imencode('.jpg', frame)
+                    if ret:
+                        yield (b'--frame\r\n'
+                               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                    time.sleep(0.04) # ~25 FPS
+            finally:
+                camera.release()
+            return
+        else:
+            print("No se pudo abrir la webcam por USB. Usando simulación.")
+
+    # Fallback to simulated PIL frames
+    print("Serving mock camera frames via PIL.")
+    while True:
+        frame_bytes = make_mock_frame()
+        if not frame_bytes:
+            break
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        time.sleep(0.2)
+
 
 from rapiro_client import RapiroSerialClient
 from test_suite import (
@@ -112,6 +173,20 @@ class RapiroRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or "/"
+        
+        # Camera Stream Route
+        if path == "/camera/stream":
+            self.send_response(200)
+            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            try:
+                for frame in gen_frames():
+                    self.wfile.write(frame)
+            except Exception as e:
+                print(f"Stream de cámara interrumpido: {e}")
+            return
+
         if path == "/":
             try:
                 ui_path = os.path.join(os.path.dirname(__file__), "index.html")
@@ -199,7 +274,7 @@ def run_server() -> None:
             print(f"Serial auto-connect failed: {result.get('message')}")
             print("Server will start anyway; use POST /serial/connect when ready.")
 
-    server = HTTPServer((HOST, PORT), RapiroRequestHandler)
+    server = ThreadingHTTPServer((HOST, PORT), RapiroRequestHandler)
     print(f"Rapiro test server listening on http://{HOST}:{PORT}")
     print("Press Ctrl+C to stop.")
 
