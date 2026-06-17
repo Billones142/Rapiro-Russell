@@ -1,7 +1,7 @@
 """
-Servidor y Cliente Rapiro para la Raspberry Pi.
-Controla servomotores y LEDs por puerto serie, y se conecta al Backend
-mediante un túnel reverso usando WebSockets.
+Cliente Rapiro para la Raspberry Pi.
+Conecta de forma saliente al Backend usando WebSockets para transmitir
+el video de la cámara y recibir comandos de control y cambios de estado (LEDs).
 """
 
 import json
@@ -9,10 +9,8 @@ import os
 import time
 import math
 import threading
-from urllib.parse import parse_qs, urlparse
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-# Intentar importar websocket-client para túnel de control
+# Importar websocket-client
 try:
     import websocket
 except ImportError:
@@ -31,60 +29,26 @@ except ImportError:
     Image = None
 
 from rapiro_client import RapiroSerialClient
-from test_suite import (
-    test_all_motions,
-    test_all_servos,
-    test_full_diagnostic,
-    test_motion,
-    test_neopixel,
-    test_serial,
-    test_servo,
-)
 
-HOST = os.environ.get("RAPIRO_HTTP_HOST", "0.0.0.0")
-PORT = int(os.environ.get("RAPIRO_HTTP_PORT", "8080"))
-BACKEND_WS_URL = os.environ.get("SEADD_BACKEND_WS", "ws://seadd.ddns.net/ws/rapiro")
+BACKEND_WS_URL = os.environ.get("SEADD_BACKEND_WS", "ws://seadd.ddns.net:8000/ws/rapiro")
 
 client = RapiroSerialClient()
 
-# --- SIMULACIÓN DE IMÁGENES ---
+# --- SIMULACIÓN DE IMÁGENES (Pillow) ---
 def make_mock_frame():
+    """Genera una imagen de simulación de lesión en formato JPEG."""
     if Image is None:
         return b""
+    # Crear un lienzo simulando piel
     img = Image.new("RGB", (320, 240), color=(30, 41, 59))
     draw = ImageDraw.Draw(img)
     # Dibujar lesión simulada (patrón eritematoso difuso)
     draw.ellipse([110, 70, 210, 170], fill=(153, 27, 27))
     draw.ellipse([130, 90, 190, 150], fill=(252, 165, 165))
+    
     buf = io.BytesIO()
     img.save(buf, format="JPEG")
     return buf.getvalue()
-
-def gen_frames():
-    """Genera tramas de video para el feed HTTP local."""
-    if cv2 is not None:
-        camera = cv2.VideoCapture(0)
-        if camera.isOpened():
-            try:
-                while True:
-                    success, frame = camera.read()
-                    if not success:
-                        break
-                    ret, buffer = cv2.imencode('.jpg', frame)
-                    if ret:
-                        yield (b'--frame\r\n'
-                               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-                    time.sleep(0.05)
-            finally:
-                camera.release()
-            return
-
-    # Fallback si no hay cámara
-    while True:
-        frame_bytes = make_mock_frame()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-        time.sleep(0.2)
 
 
 # --- GESTOR DE EFECTOS LED AUTOMATIZADOS ---
@@ -110,7 +74,6 @@ class LedEffectManager:
         tick = 0
         
         while not self._stop_event.is_set():
-            # Esperar a que la conexión serial esté lista
             if not self.client.is_connected:
                 time.sleep(1.0)
                 continue
@@ -163,7 +126,7 @@ led_manager = LedEffectManager(client)
 # --- HILO DE CONEXIÓN WEBSOCKET DE CLIENTE (TÚNEL REVERSO) ---
 def start_websocket_client():
     if websocket is None:
-        print("[WS Client] AVISO: 'websocket-client' no está instalado. El túnel reverso no arrancará.")
+        print("[WS Client] ERROR: 'websocket-client' no está instalado. El túnel reverso no arrancará.")
         return
 
     def on_message(ws, message):
@@ -180,15 +143,15 @@ def start_websocket_client():
             print(f"[WS Client] Error al procesar mensaje WebSocket: {e}")
 
     def on_error(ws, error):
-        print(f"[WS Client] Error: {error}")
+        print(f"[WS Client] Error en la conexión: {error}")
 
     def on_close(ws, close_status_code, close_msg):
         print("[WS Client] Conexión cerrada con el servidor backend.")
 
     def on_open(ws):
-        print("[WS Client] Conexión establecida con el servidor backend. Transmitiendo stream...")
+        print("[WS Client] Conectado al backend con éxito. Transmitiendo video...")
         
-        # Hilo para transmitir video continuamente al backend en binario (JPEG)
+        # Hilo secundario para transmitir video continuamente al backend en binario (JPEG)
         def video_stream_loop():
             camera = None
             if cv2 is not None:
@@ -243,187 +206,30 @@ def start_websocket_client():
     threading.Thread(target=client_reconnect_loop, daemon=True).start()
 
 
-# --- SERVIDORES LOCALES Y ROUTING (PARA PRUEBAS LOCALES) ---
-def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict) -> None:
-    body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
-    handler.send_response(status)
-    handler.send_header("Content-Type", "application/json; charset=utf-8")
-    handler.send_header("Content-Length", str(len(body)))
-    handler.send_header("Access-Control-Allow-Origin", "*")
-    handler.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    handler.send_header("Access-Control-Allow-Headers", "Content-Type")
-    handler.end_headers()
-    handler.wfile.write(body)
-
-def _read_json_body(handler: BaseHTTPRequestHandler) -> dict:
-    length = int(handler.headers.get("Content-Length", 0))
-    if length == 0:
-        return {}
-    raw = handler.rfile.read(length)
-    try:
-        return json.loads(raw.decode("utf-8"))
-    except json.JSONDecodeError:
-        return {}
-
-API_ROUTES = {
-    "GET": {
-        "/": lambda _h, _q, _b: {
-            "service": "Rapiro Local Server",
-            "version": "1.1.0",
-            "endpoints": {
-                "GET /camera/stream": "MJPEG local video feed",
-                "GET /status": "Serial and client state",
-            }
-        },
-        "/health": lambda _h, _q, _b: {"ok": True, "status": "running"},
-        "/status": lambda _h, _q, _b: client.status(),
-    },
-    "POST": {
-        "/serial/connect": lambda _h, _q, _b: client.connect(),
-        "/serial/disconnect": lambda _h, _q, _b: client.disconnect(),
-        "/serial/test": lambda _h, _q, _b: test_serial(client),
-        "/command": lambda _h, _q, b: client.send_command(
-            b.get("command", ""),
-            wait=float(b.get("wait", 1.8)),
-        ),
-        "/test/servos": lambda _h, _q, b: test_all_servos(
-            client, duration_ms=int(b.get("duration_ms", 400))
-        ),
-        "/test/neopixel": lambda _h, _q, b: test_neopixel(
-            client, pause=float(b.get("pause", 0.8))
-        ),
-        "/test/motions": lambda _h, _q, b: test_all_motions(
-            client, motion_pause=float(b.get("pause", 2.5))
-        ),
-        "/test/full": lambda _h, _q, _b: test_full_diagnostic(client),
-    },
-}
-
-class RapiroRequestHandler(BaseHTTPRequestHandler):
-    def log_message(self, format: str, *args) -> None:
-        # Silenciar logs del stream de video local
-        if "stream" not in format:
-            print(f"[HTTP] {self.address_string()} - {format % args}")
-
-    def do_OPTIONS(self) -> None:
-        self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.end_headers()
-
-    def do_GET(self) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path.rstrip("/") or "/"
-        
-        # Local video stream
-        if path == "/camera/stream":
-            self.send_response(200)
-            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=frame')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            try:
-                for frame in gen_frames():
-                    self.wfile.write(frame)
-            except Exception as e:
-                pass
-            return
-
-        if path == "/":
-            try:
-                ui_path = os.path.join(os.path.dirname(__file__), "index.html")
-                with open(ui_path, "r", encoding="utf-8") as f:
-                    html_content = f.read()
-                body = html_content.encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(body)))
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                self.wfile.write(body)
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "text/plain")
-                self.end_headers()
-                self.wfile.write(f"Error loading UI: {e}".encode("utf-8"))
-            return
-
-        self._dispatch("GET")
-
-    def do_POST(self) -> None:
-        self._dispatch("POST")
-
-    def _dispatch(self, method: str) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path.rstrip("/") or "/"
-        query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
-        body = _read_json_body(self) if method == "POST" else {}
-
-        routes = API_ROUTES.get(method, {})
-
-        if path.startswith("/test/servos/") and method == "POST":
-            try:
-                servo_id = int(path.split("/")[-1])
-                result = test_servo(
-                    client,
-                    servo_id,
-                    duration_ms=int(body.get("duration_ms", query.get("duration_ms", 400))),
-                )
-                _json_response(self, 200 if result.get("ok") else 500, result)
-                return
-            except ValueError:
-                _json_response(self, 400, {"ok": False, "message": "Invalid servo id"})
-                return
-
-        if path.startswith("/test/motions/") and method == "POST":
-            try:
-                motion_id = int(path.split("/")[-1])
-                result = test_motion(
-                    client,
-                    motion_id,
-                    duration=float(body.get("duration", query.get("duration", 3.0))),
-                )
-                _json_response(self, 200 if result.get("ok") else 500, result)
-                return
-            except ValueError:
-                _json_response(self, 400, {"ok": False, "message": "Invalid motion id"})
-                return
-
-        handler = routes.get(path)
-        if handler is None:
-            _json_response(self, 404, {"ok": False, "message": f"Route not found: {path}"})
-            return
-
-        try:
-            result = handler(self, query, body)
-            _json_response(self, 200 if result.get("ok", True) else 500, result)
-        except Exception as exc:
-            _json_response(self, 500, {"ok": False, "message": str(exc)})
-
-
-def run_server() -> None:
-    # Auto-conectar serial al iniciar
+def main() -> None:
+    # Auto-conectar puerto serie con Rapiro Arduino
     client.connect()
     if client.is_connected:
-        print(f"Serial conectado en {client.port} @ {client.baud} baud")
+        print(f"Puerto Serie conectado en {client.port} @ {client.baud} baud")
     else:
-        print("Serial auto-connect falló. Se podrá reintentar vía API local.")
+        print("Puerto Serie falló (se ejecutará en modo simulación de robot).")
 
-    # Arrancar manager LED
+    # Iniciar animador LED de ojos
     led_manager.start()
 
-    # Arrancar cliente WebSocket hacia la nube
+    # Iniciar el cliente WebSocket saliente hacia el servidor en la nube
     start_websocket_client()
 
-    server = ThreadingHTTPServer((HOST, PORT), RapiroRequestHandler)
-    print(f"Servidor HTTP Rapiro iniciado en http://{HOST}:{PORT}")
+    print("[SEADD Client] Rapiro iniciado y en funcionamiento. Presiona Ctrl+C para salir.")
+    
+    # Mantener el hilo principal activo
     try:
-        server.serve_forever()
+        while True:
+            time.sleep(1.0)
     except KeyboardInterrupt:
-        print("\nCerrando...")
+        print("\nDeteniendo cliente Rapiro...")
         client.disconnect()
-        server.server_close()
 
 
 if __name__ == "__main__":
-    run_server()
+    main()
