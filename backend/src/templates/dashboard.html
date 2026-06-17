@@ -615,21 +615,21 @@
             <div class="card">
                 <div class="card-title">
                     <span>📷 Captura de Lesión</span>
-                    <span class="badge badge-info" id="camera-mode-badge">Simulador</span>
+                    <span class="badge badge-secondary" id="camera-mode-badge">Sin Señal</span>
                 </div>
                 <div class="video-container" id="video-frame-container">
-                    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><circle cx='200' cy='150' r='50' fill='%23991b1b' opacity='0.7' filter='blur(10px)'/><ellipse cx='210' cy='140' rx='35' ry='25' fill='%23fca5a5' opacity='0.5' filter='blur(15px)'/><path d='M180,120 Q200,160 220,130' stroke='%23ffffff' stroke-width='3' fill='none' opacity='0.4' filter='blur(1px)'/></svg>" 
-                         class="mock-image" id="video-feed-img" alt="Video stream">
-                    <div class="simulation-banner" id="sim-banner">Simulación</div>
+                    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'>Esperando señal de video de la Raspberry Pi...</text></svg>" 
+                          class="mock-image" id="video-feed-img" alt="Video stream">
+                    <div class="simulation-banner hidden" id="sim-banner">Sin Señal</div>
                     
                     <div class="video-overlay" id="video-overlay-msg">
                         <p style="margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">Esperando conexión del robot...</p>
                         <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem; max-width: 80%;">
                             Rapiro se conectará dinámicamente desde el consultorio.
                         </p>
-                        <button class="btn btn-secondary btn-small" onclick="enableMockCamera()">Usar Simulador Local</button>
                     </div>
                 </div>
+            </div>
                 <div class="controls-grid">
                     <button class="btn" id="btn-capture" onclick="triggerCapture()">
                         <span>📸 Capturar Imagen</span>
@@ -943,10 +943,10 @@
                 objectUrl = null;
             }
             const img = document.getElementById("video-feed-img");
-            img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><circle cx='200' cy='150' r='50' fill='%23991b1b' opacity='0.7' filter='blur(10px)'/><ellipse cx='210' cy='140' rx='35' ry='25' fill='%23fca5a5' opacity='0.5' filter='blur(15px)'/><path d='M180,120 Q200,160 220,130' stroke='%23ffffff' stroke-width='3' fill='none' opacity='0.4' filter='blur(1px)'/></svg>";
-            document.getElementById("camera-mode-badge").innerText = "Simulador";
-            document.getElementById("camera-mode-badge").className = "badge badge-info";
-            document.getElementById("sim-banner").classList.remove("hidden");
+            img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'>Esperando señal de video de la Raspberry Pi...</text></svg>";
+            document.getElementById("camera-mode-badge").innerText = "Sin Señal";
+            document.getElementById("camera-mode-badge").className = "badge badge-secondary";
+            document.getElementById("sim-banner").classList.add("hidden");
         }
 
         async function triggerCapture() {
