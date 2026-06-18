@@ -117,6 +117,12 @@ async def run_inference(inputs: SymptomInput):
 @app.post("/api/predict")
 async def predict(image: UploadFile = File(...)):
     """Clasifica la morfología de una lesión cutánea a partir de una imagen."""
+    # Notificar estado de captura (gesto de pulgar arriba en Rapiro)
+    await manager.send_to_rapiro({"type": "state", "value": "capturing"})
+    # Dar tiempo a que el robot realice el gesto
+    await asyncio.sleep(1.5)
+    
+    # Cambiar a estado de análisis
     await manager.send_to_rapiro({"type": "state", "value": "analyzing"})
 
     tmp_path = None
