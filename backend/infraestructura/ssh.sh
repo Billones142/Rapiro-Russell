@@ -1,5 +1,5 @@
 host=$(aws ec2 describe-instances \
-  --instance-ids i-0f79edab0d8431e5a \
+  --instance-ids i-0e79c2f83e445cd55 \
   --region sa-east-1 \
   --query "Reservations[0].Instances[0].PublicIpAddress" \
   --output text \

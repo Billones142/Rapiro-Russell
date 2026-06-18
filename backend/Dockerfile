@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar el código fuente y las plantillas
 COPY src/ /app/
 
+# Copiar el modelo al path esperado por la inferencia en Docker (/entrenamiento)
+COPY entrenamiento/seadd_morfologia_savedmodel/ /entrenamiento/seadd_morfologia_savedmodel/
+
 # Exponer el puerto 8000 (donde escucha FastAPI)
 EXPOSE 8000
 

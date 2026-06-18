@@ -1,1 +1,1 @@
-aws ec2 stop-instances --instance-ids i-0f79edab0d8431e5a --region sa-east-1 --no-cli-pager
+aws ec2 stop-instances --instance-ids i-0e79c2f83e445cd55 --region sa-east-1 --no-cli-pager
