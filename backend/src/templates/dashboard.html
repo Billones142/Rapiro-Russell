@@ -594,6 +594,26 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.04);
             padding-bottom: 0.25rem;
         }
+
+        @keyframes blink-glow {
+            0% {
+                border-color: var(--border-glow);
+                box-shadow: 0 0 5px rgba(99, 102, 241, 0.1);
+            }
+            50% {
+                border-color: var(--accent-secondary);
+                box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+                background-color: rgba(16, 185, 129, 0.05);
+            }
+            100% {
+                border-color: var(--border-glow);
+                box-shadow: 0 0 5px rgba(99, 102, 241, 0.1);
+            }
+        }
+
+        .blink-active {
+            animation: blink-glow 0.8s ease-in-out 2;
+        }
     </style>
 </head>
 <body>
@@ -635,30 +655,39 @@
                     </div>
                 </div>
             </div>
-                <div class="controls-grid">
-                    <button class="btn" id="btn-capture" onclick="triggerCapture()">
-                        <span>📸 Capturar Imagen</span>
-                    </button>
-                    <button class="btn btn-secondary" id="btn-mock-toggle" onclick="enableMockCamera()">
-                        <span>Reset Vista</span>
-                    </button>
-                </div>
+
+            <div class="controls-grid">
+                <button class="btn" id="btn-capture" onclick="triggerCapture()">
+                    <span>📸 Capturar Imagen</span>
+                </button>
+                <button class="btn btn-secondary" id="btn-mock-toggle" onclick="enableMockCamera()">
+                    <span>Reset Vista</span>
+                </button>
             </div>
 
-            <!-- Rapiro Physical Actions -->
-            <div class="card">
+            <!-- Resultados del Modelo de Visión -->
+            <div class="card hidden" id="vision-results-card" style="border-color: rgba(99, 102, 241, 0.3);">
                 <div class="card-title">
-                    <span>🤖 Control del Robot</span>
+                    <span>👁️ Resultados del Modelo de Visión (CNN)</span>
                 </div>
-                <div class="controls-grid">
-                    <button class="btn btn-secondary" onclick="sendRapiroMotion(0)">Home / Stop</button>
-                    <button class="btn btn-secondary" onclick="sendRapiroMotion(5)">Saludo</button>
-                    <button class="btn btn-secondary" onclick="sendRapiroMotion(7)">Ambas Manos</button>
-                    <button class="btn btn-secondary" onclick="sendRapiroMotion(8)">Adiós</button>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Morfología detectada:</span>
+                        <span style="font-size: 1.1rem; font-weight: 600; color: #fff;" id="vision-result-morphology">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Confianza / Certeza:</span>
+                        <span class="badge badge-info" id="vision-result-confidence" style="font-size: 0.9rem; font-weight: 600;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Tiempo de Inferencia:</span>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: var(--accent-secondary);" id="vision-result-time">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Dispositivo:</span>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: #fff;" id="vision-result-hardware">-</span>
+                    </div>
                 </div>
-                <p style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 0.5rem;">
-                    *Los efectos visuales de los LEDs se adaptan automáticamente según el estado de la consulta.
-                </p>
             </div>
         </div>
 
@@ -667,7 +696,7 @@
             <!-- Double Entry Form Card -->
             <div class="card ai-glow-card">
                 <div class="card-title">
-                    <span>📋 Historial Clínico y Doble Entrada</span>
+                    <span>📋 Historial Clínico</span>
                     <span class="badge badge-success" id="ai-status-badge">AI Lista</span>
                 </div>
 
@@ -680,6 +709,7 @@
                         <div class="form-group">
                             <label>Localización</label>
                             <select class="select-input" id="pat-location">
+                                <option value="" selected></option>
                                 <option value="codos">Codos</option>
                                 <option value="cara">Cara / Rostro</option>
                                 <option value="pies">Pies / Extremidades</option>
@@ -691,6 +721,7 @@
                         <div class="form-group">
                             <label>Morfología (Observada por Paciente)</label>
                             <select class="select-input" id="pat-morphology">
+                                <option value="" selected></option>
                                 <option value="escama">Escama</option>
                                 <option value="pápula">Pápula</option>
                                 <option value="ampolla">Ampolla / Vesícula</option>
@@ -701,6 +732,7 @@
                         <div class="form-group">
                             <label>Color predominante</label>
                             <select class="select-input" id="pat-color">
+                                <option value="" selected></option>
                                 <option value="rojo">Rojo eritematoso</option>
                                 <option value="blanco nacarado">Blanco nacarado (plateado)</option>
                                 <option value="rosado">Rosado</option>
@@ -721,58 +753,41 @@
                         </div>
                     </div>
 
-                    <!-- Right Form: Clinician / Vision Model corrected input -->
-                    <div class="form-section" style="border-color: rgba(99, 102, 241, 0.15);">
+                    <!-- Right Section: Computer Analysis (Visión) -->
+                    <div class="form-section" style="border-color: rgba(99, 102, 241, 0.15); display: flex; flex-direction: column; gap: 1rem;">
                         <div class="form-section-title" style="color: var(--accent-primary);">
-                            🩺 Corrección Clínica (Especialista + Visión)
+                            💻 Análisis por Computadora
                         </div>
-                        <div class="form-group">
-                            <label>Localización Confirmada</label>
-                            <select class="select-input" id="cli-location">
-                                <option value="codos">Codos</option>
-                                <option value="cara">Cara / Rostro</option>
-                                <option value="pies">Pies / Extremidades</option>
-                                <option value="uñas">Uñas</option>
-                                <option value="flexuras">Zonas de Flexura (pliegues)</option>
-                                <option value="otros">Otros</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Morfología (Confirmada / Visión)</label>
-                            <select class="select-input" id="cli-morphology">
-                                <option value="escama">Escama</option>
-                                <option value="pápula">Pápula</option>
-                                <option value="ampolla">Ampolla / Vesícula</option>
-                                <option value="mácula">Mácula (mancha)</option>
-                                <option value="engrosamiento">Engrosamiento</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Color predominante (Confirmado / Visión)</label>
-                            <select class="select-input" id="cli-color">
-                                <option value="rojo">Rojo eritematoso</option>
-                                <option value="blanco nacarado">Blanco nacarado (plateado)</option>
-                                <option value="rosado">Rosado</option>
-                                <option value="amarillento">Amarillento</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Intensidad de picazón clínica (0 a 10)</label>
-                            <input type="number" class="number-input" id="cli-pruritus" min="0" max="10" value="8" step="0.5">
-                        </div>
-                        <div class="form-group">
-                            <label>Antigüedad clínica (Meses)</label>
-                            <input type="number" class="number-input" id="cli-duration" min="0" value="2" step="0.5">
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" class="checkbox-input" id="cli-stress" checked>
-                            <label for="cli-stress">Confirmar factor estrés/ansiedad</label>
+                        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Morfología Detectada</span>
+                                <span style="font-size: 0.95rem; font-weight: 600; color: #fff;" id="comp-morphology">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Confianza / Certeza</span>
+                                <span class="badge badge-info" id="comp-confidence">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Tiempo de Inferencia</span>
+                                <span style="font-size: 0.9rem; font-weight: 600; color: var(--accent-secondary);" id="comp-time">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Tamaño de Imagen</span>
+                                <span style="font-size: 0.9rem; font-weight: 600; color: #fff;" id="comp-img-size">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Hardware / Aceleración</span>
+                                <span style="font-size: 0.9rem; font-weight: 600; color: #fff;" id="comp-hardware">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Estado de Red Neuronal</span>
+                                <span class="badge badge-success" id="comp-status">Cargado</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between;">
-                    <button class="btn btn-secondary" onclick="syncPatientToClinical()">Copiar Autoreporte</button>
+                <div style="display: flex; gap: 1rem; align-items: center; justify-content: center;">
                     <button class="btn" id="btn-infer" onclick="runInference()" style="flex: 1; max-width: 400px;">
                         <span>🧠 Iniciar Inferencia Experta</span>
                     </button>
@@ -784,6 +799,14 @@
                 <div class="card-title">
                     <span>💡 Orientación Diagnóstica Diferencial</span>
                     <span class="badge badge-success" id="result-state-badge">Agudo</span>
+                </div>
+
+                <!-- Warning (Mostrada arriba y con letra más grande) -->
+                <div class="warning-alert" style="font-size: 1.15rem; margin-top: 0.75rem; margin-bottom: 1.25rem; border-color: rgba(239, 68, 68, 0.35); line-height: 1.5;">
+                    <span style="font-size: 1.8rem; margin-right: 0.5rem;">⚠️</span>
+                    <div>
+                        <strong>Advertencia Importante:</strong> El diagnóstico definitivo es responsabilidad exclusiva del especialista médico. Este software es un prototipo de soporte a la decisión clínica y no cuenta con aprobación regulatoria para su uso clínico independiente.
+                    </div>
                 </div>
 
                 <div class="results-box">
@@ -834,14 +857,6 @@
                     <ul class="rules-list" id="rules-fired-list">
                         <!-- Rules go here -->
                     </ul>
-                </div>
-
-                <!-- Warning -->
-                <div class="warning-alert">
-                    <span style="font-size: 1.25rem;">⚠️</span>
-                    <div>
-                        <strong>Advertencia Importante:</strong> El diagnóstico definitivo es responsabilidad exclusiva del especialista médico. Este software es un prototipo de soporte a la decisión clínica y no cuenta con aprobación regulatoria para su uso clínico independiente.
-                    </div>
                 </div>
             </div>
         </div>
@@ -925,15 +940,6 @@
             }
         }
 
-        function syncPatientToClinical() {
-            document.getElementById("cli-location").value = document.getElementById("pat-location").value;
-            document.getElementById("cli-morphology").value = document.getElementById("pat-morphology").value;
-            document.getElementById("cli-color").value = document.getElementById("pat-color").value;
-            document.getElementById("cli-pruritus").value = document.getElementById("pat-pruritus").value;
-            document.getElementById("cli-duration").value = document.getElementById("pat-duration").value;
-            document.getElementById("cli-stress").checked = document.getElementById("pat-stress").checked;
-        }
-
         function sendRapiroMotion(motionId) {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "command", cmd: `#M${motionId}` }));
@@ -962,7 +968,7 @@
 
             // El modelo solo conoce 3 clases; las otras 2 son de carga manual exclusiva.
             const MODEL_TO_FORM_MORPHOLOGY = { macula: "mácula", papula: "pápula", escama: "escama" };
-            const cliMorphologySelect = document.getElementById("cli-morphology");
+            const patMorphologySelect = document.getElementById("pat-morphology");
 
             try {
                 const frameRes = await fetch(document.getElementById("video-feed-img").src);
@@ -976,8 +982,37 @@
                 if (!data.ok) throw new Error(data.error || "Fallo de inferencia");
 
                 const { morfologia, confianza } = data.prediction;
-                cliMorphologySelect.value = MODEL_TO_FORM_MORPHOLOGY[morfologia] || morfologia;
-                cliMorphologySelect.classList.toggle("low-confidence", confianza < 0.6);
+                const stats = data.stats || {};
+                
+                patMorphologySelect.value = MODEL_TO_FORM_MORPHOLOGY[morfologia] || morfologia;
+                patMorphologySelect.classList.toggle("low-confidence", confianza < 0.6);
+
+                // Mostrar resultados del modelo de visión abajo de la cámara
+                const visionResultsCard = document.getElementById("vision-results-card");
+                visionResultsCard.classList.remove("hidden");
+                
+                const formMorphologyName = MODEL_TO_FORM_MORPHOLOGY[morfologia] || morfologia;
+                document.getElementById("vision-result-morphology").innerText = formMorphologyName.toUpperCase();
+                document.getElementById("vision-result-confidence").innerText = `${Math.round(confianza * 100)}%`;
+                document.getElementById("vision-result-confidence").className = confianza >= 0.6 ? "badge badge-success" : "badge badge-warning";
+                document.getElementById("vision-result-time").innerText = `${stats.inference_time_ms} ms`;
+                document.getElementById("vision-result-hardware").innerText = stats.device || "CPU";
+
+                // Actualizar panel de Análisis por Computadora
+                document.getElementById("comp-morphology").innerText = formMorphologyName.toUpperCase();
+                document.getElementById("comp-confidence").innerText = `${Math.round(confianza * 100)}%`;
+                document.getElementById("comp-confidence").className = confianza >= 0.6 ? "badge badge-success" : "badge badge-warning";
+                document.getElementById("comp-time").innerText = `${stats.inference_time_ms} ms`;
+                document.getElementById("comp-img-size").innerText = `${stats.file_size_kb} KB`;
+                document.getElementById("comp-hardware").innerText = stats.device || "CPU";
+
+                // Efecto de parpadeo de color
+                visionResultsCard.classList.add("blink-active");
+                patMorphologySelect.classList.add("blink-active");
+                setTimeout(() => {
+                    visionResultsCard.classList.remove("blink-active");
+                    patMorphologySelect.classList.remove("blink-active");
+                }, 1600);
 
                 document.getElementById("ai-status-badge").innerText = `Vision OK (${Math.round(confianza*100)}%)`;
                 document.getElementById("ai-status-badge").className = "badge badge-success";
@@ -993,15 +1028,27 @@
 
         async function runInference() {
             const btn = document.getElementById("btn-infer");
+
+            // Validar que se hayan seleccionado opciones válidas en los campos de selección (descartar las opciones vacías)
+            const patLocation = document.getElementById("pat-location").value;
+            const patMorphology = document.getElementById("pat-morphology").value;
+            const patColor = document.getElementById("pat-color").value;
+
+            if (!patLocation || !patMorphology || !patColor) {
+                alert("Por favor, complete todas las opciones de selección en el Autoreporte antes de iniciar la inferencia.");
+                btn.innerText = "🧠 Iniciar Inferencia Experta";
+                return;
+            }
+
             btn.innerHTML = '<span class="loading-ring"></span> Procesando Inferencia...';
 
             const payload = {
-                location: document.getElementById("cli-location").value,
-                morphology: document.getElementById("cli-morphology").value,
-                color: document.getElementById("cli-color").value,
-                pruritus: parseFloat(document.getElementById("cli-pruritus").value),
-                duration: parseFloat(document.getElementById("cli-duration").value),
-                stress: document.getElementById("cli-stress").checked
+                location: patLocation,
+                morphology: patMorphology,
+                color: patColor,
+                pruritus: parseFloat(document.getElementById("pat-pruritus").value),
+                duration: parseFloat(document.getElementById("pat-duration").value),
+                stress: document.getElementById("pat-stress").checked
             };
 
             try {

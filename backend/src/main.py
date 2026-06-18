@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import json
 import asyncio
@@ -125,6 +126,9 @@ async def predict(image: UploadFile = File(...)):
     # Cambiar a estado de análisis
     await manager.send_to_rapiro({"type": "state", "value": "analyzing"})
 
+    import time
+    import tensorflow as tf
+    import traceback
     tmp_path = None
     try:
         suffix = os.path.splitext(image.filename or "")[1] or ".jpg"
@@ -132,10 +136,26 @@ async def predict(image: UploadFile = File(...)):
             tmp.write(await image.read())
             tmp_path = tmp.name
 
+        t0 = time.perf_counter()
         prediction = await asyncio.to_thread(predecir_morfologia, tmp_path)
+        elapsed = time.perf_counter() - t0
+
+        gpus = tf.config.list_physical_devices('GPU')
+        device = "GPU (CUDA)" if len(gpus) > 0 else "CPU (TensorFlow)"
+        file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
+
         await manager.send_to_rapiro({"type": "state", "value": "waiting"})
-        return JSONResponse(content={"ok": True, "prediction": prediction})
+        return JSONResponse(content={
+            "ok": True, 
+            "prediction": prediction,
+            "stats": {
+                "inference_time_ms": round(elapsed * 1000, 1),
+                "file_size_kb": file_size_kb,
+                "device": device
+            }
+        })
     except Exception as e:
+        traceback.print_exc()
         await manager.send_to_rapiro({"type": "state", "value": "waiting"})
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
     finally:

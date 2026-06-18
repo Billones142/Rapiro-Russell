@@ -1,0 +1,3 @@
+[ ] compresion de video
+[ ] 
+[ ] 
