@@ -56,6 +56,7 @@ class LedEffectManager:
     def __init__(self, serial_client: RapiroSerialClient):
         self.client = serial_client
         self.state = "waiting"
+        self.morphology = None
         self._stop_event = threading.Event()
         self._thread = None
 
@@ -64,18 +65,15 @@ class LedEffectManager:
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
 
-    def set_state(self, state: str):
+    def set_state(self, state: str, morphology: str = None):
         print(f"[LED Manager] Cambiando a estado: {state}")
         self.state = state
+        self.morphology = morphology
 
     def _run_loop(self):
         last_state = None
         
         while not self._stop_event.is_set():
-            if not self.client.is_connected:
-                time.sleep(1.0)
-                continue
-
             state = self.state
 
             if state != last_state:
@@ -99,11 +97,29 @@ class LedEffectManager:
                 elif state == "inferring":
                     self.client.send_command("#PR255G100B000T005", wait=0.5)
 
-                # 5. Inferencia completa (Verde + Saludo + Espera de 3 segundos y vuelta a waiting)
+                # 5. Inferencia completa (Gestos específicos según morfología + 3 segundos de pose y vuelta a waiting)
                 elif state == "result_ready":
-                    self.client.send_command("#PR000G255B000T005", wait=0.1)
-                    self.client.send_command("#M5", wait=2.5)
-                    time.sleep(3.0)
+                    morph = (self.morphology or "").lower().strip()
+                    if "escama" in morph:
+                        self.client.send_command("#M1", wait=0.2)
+                        self.client.send_command("#L02252525", wait=0.2)
+                        self.client.send_command("#M5", wait=0.2)
+                        time.sleep(3.0)
+                    elif "papula" in morph or "pápula" in morph:
+                        self.client.send_command("#M1", wait=0.2)
+                        self.client.send_command("#L02250000", wait=0.2)
+                        self.client.send_command("#M2", wait=0.2)
+                        time.sleep(3.0)
+                    elif "macula" in morph or "mácula" in morph:
+                        self.client.send_command("#M1", wait=0.2)
+                        self.client.send_command("#L00000025", wait=0.2)
+                        self.client.send_command("#M6", wait=0.2)
+                        time.sleep(3.0)
+                    else:
+                        self.client.send_command("#PR000G255B000T005", wait=0.1)
+                        self.client.send_command("#M5", wait=2.5)
+                        time.sleep(3.0)
+                    
                     self.set_state("waiting")
 
                 last_state = state
@@ -128,7 +144,8 @@ def start_websocket_client():
                 client.send_command(cmd)
             elif data.get("type") == "state":
                 state_val = data.get("value")
-                led_manager.set_state(state_val)
+                morph_val = data.get("morphology")
+                led_manager.set_state(state_val, morphology=morph_val)
         except Exception as e:
             print(f"[WS Client] Error al procesar mensaje WebSocket: {e}")
 
