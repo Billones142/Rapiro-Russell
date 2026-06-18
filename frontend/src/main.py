@@ -7,7 +7,6 @@ el video de la cámara y recibir comandos de control y cambios de estado (LEDs).
 import json
 import os
 import time
-import math
 import threading
 
 # Importar websocket-client
@@ -71,7 +70,6 @@ class LedEffectManager:
 
     def _run_loop(self):
         last_state = None
-        tick = 0
         
         while not self._stop_event.is_set():
             if not self.client.is_connected:
@@ -80,45 +78,37 @@ class LedEffectManager:
 
             state = self.state
 
-            # 1. Esperando al dermatólogo (Breathing Cyan)
-            if state == "waiting":
-                intensity = int(70 + 60 * math.sin(tick * 0.3))
-                cmd = self.client.build_led_command(0, intensity, intensity, duration_ms=200)
-                self.client.send_command(cmd, wait=0.2)
+            if state != last_state:
+                print(f"[LED Manager] Cambiando a estado: {state}")
+                
+                # 1. Esperando al dermatólogo (Cyan estático y posición inicial)
+                if state == "waiting":
+                    self.client.send_command("#PR000G128B128T005", wait=0.1)
+                    self.client.send_command("#M0", wait=1.0)
 
-            # 2. Capturando lesión (Solid Yellow)
-            elif state == "capturing":
-                if last_state != "capturing":
-                    cmd = self.client.build_led_command(255, 200, 0, duration_ms=300)
-                    self.client.send_command(cmd, wait=0.3)
-                time.sleep(0.3)
+                # 2. Capturando lesión (Amarillo + Brazo derecho arriba + Garra cerrada/pulgar arriba)
+                elif state == "capturing":
+                    # Ojos amarillos, S02 (hombro derecho roll) a 120, S03 (brazo derecho pitch) a 90, S04 (garra derecha) a 50
+                    self.client.send_command("#PS02A120S03A090S04A050R255G200B000T005", wait=1.0)
 
-            # 3. Analizando la imagen con la red de visión (Pulsing Violet)
-            elif state == "analyzing":
-                intensity = int(128 + 120 * math.sin(tick * 1.0))
-                cmd = self.client.build_led_command(intensity, 0, intensity, duration_ms=100)
-                self.client.send_command(cmd, wait=0.1)
+                # 3. Analizando la imagen con la red de visión (Violeta estático)
+                elif state == "analyzing":
+                    self.client.send_command("#PR128G000B128T005", wait=0.5)
 
-            # 4. Inferencia del sistema experto en curso (Blinking Orange)
-            elif state == "inferring":
-                if tick % 2 == 0:
-                    cmd = self.client.build_led_command(255, 100, 0, duration_ms=100)
-                else:
-                    cmd = self.client.build_led_command(0, 0, 0, duration_ms=100)
-                self.client.send_command(cmd, wait=0.1)
+                # 4. Inferencia del sistema experto en curso (Naranja estático)
+                elif state == "inferring":
+                    self.client.send_command("#PR255G100B000T005", wait=0.5)
 
-            # 5. Inferencia completa / resultado listo (Solid Green + Gestura de Saludo)
-            elif state == "result_ready":
-                if last_state != "result_ready":
-                    # Poner ojos verdes
-                    cmd = self.client.build_led_command(0, 255, 0, duration_ms=500)
-                    self.client.send_command(cmd, wait=0.5)
-                    # Ejecutar saludo/wave con el brazo (#M5) para notificar físicamente
+                # 5. Inferencia completa (Verde + Saludo + Espera de 3 segundos y vuelta a waiting)
+                elif state == "result_ready":
+                    self.client.send_command("#PR000G255B000T005", wait=0.1)
                     self.client.send_command("#M5", wait=2.5)
-                time.sleep(0.5)
+                    time.sleep(3.0)
+                    self.set_state("waiting")
 
-            last_state = state
-            tick += 1
+                last_state = state
+
+            time.sleep(0.1)
 
 led_manager = LedEffectManager(client)
 
