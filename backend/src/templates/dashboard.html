@@ -847,8 +847,10 @@
                             <div class="gauge-text" id="result-cert-value">99%</div>
                         </div>
                         <h3 id="result-main-diag" style="margin-top: 1rem; font-size: 1.25rem;">Psoriasis</h3>
-                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Nivel de
-                            Certeza</p>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Nivel de Certeza</p>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;" id="result-time-container">
+                            Tiempo de Inferencia: <span id="result-time-value" style="color: var(--accent-secondary); font-weight: 600;">-</span>
+                        </p>
                     </div>
 
                     <!-- Detailed inference outputs -->
@@ -899,6 +901,7 @@
         let ws;
         let objectUrl = null;
         let latestFrameBlob = null;
+        let isFrozen = false;
 
         // Auto-conectar WebSocket al cargar la página
         window.addEventListener('load', () => {
@@ -919,6 +922,9 @@
 
             ws.onmessage = (event) => {
                 if (event.data instanceof Blob) {
+                    if (isFrozen) {
+                        return; // Si la captura está congelada en pantalla, no actualizar con nuevos frames
+                    }
                     // Es un frame de video binario de Rapiro
                     latestFrameBlob = event.data;
                     if (objectUrl) {
@@ -983,6 +989,7 @@
         }
 
         function enableMockCamera() {
+            isFrozen = false; // Descongelar el video stream
             if (objectUrl) {
                 URL.revokeObjectURL(objectUrl);
                 objectUrl = null;
@@ -1000,6 +1007,11 @@
                 alert("No hay señal de video activa de Rapiro para capturar. Asegúrese de que el robot esté conectado y transmitiendo.");
                 return;
             }
+
+            isFrozen = true; // Congelar el frame actual en pantalla
+            const badge = document.getElementById("camera-mode-badge");
+            badge.innerText = "Captura Congelada";
+            badge.className = "badge badge-info";
 
             const btn = document.getElementById("btn-capture");
             btn.innerHTML = '<span class="loading-ring"></span> Clasificando...';
@@ -1114,6 +1126,12 @@
 
             document.getElementById("result-main-diag").innerText = data.diagnosis;
             document.getElementById("result-cert-value").innerText = `${data.certainty}%`;
+
+            if (data.inference_time_ms !== undefined) {
+                document.getElementById("result-time-value").innerText = `${data.inference_time_ms} ms`;
+            } else {
+                document.getElementById("result-time-value").innerText = "-";
+            }
 
             const gaugeFill = document.getElementById("result-gauge-fill");
             const circumference = 2 * Math.PI * 70; // 439.8

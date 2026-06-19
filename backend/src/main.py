@@ -95,6 +95,18 @@ async def get_dashboard(request: Request):
 @app.post("/api/infer")
 async def run_inference(inputs: SymptomInput):
     """Ejecuta la inferencia experta y cambia el estado de los LEDs del robot."""
+    import time
+    t0 = time.perf_counter()
+    
+    # Logging detallado de la entrada de inferencia
+    print(f"\n[SISTEMA EXPERTO] Solicitud de inferencia recibida:")
+    print(f"  - Localización: {inputs.location}")
+    print(f"  - Morfología: {inputs.morphology}")
+    print(f"  - Color: {inputs.color}")
+    print(f"  - Picazón (Prurito): {inputs.pruritus}/10")
+    print(f"  - Duración: {inputs.duration} meses")
+    print(f"  - Estrés Reciente: {'Sí' if inputs.stress else 'No'}")
+    
     # Notificar estado al robot
     await manager.send_to_rapiro({"type": "state", "value": "inferring"})
     
@@ -113,15 +125,28 @@ async def run_inference(inputs: SymptomInput):
             "value": "result_ready",
             "morphology": inputs.morphology
         })
+        
+        # Calcular el tiempo transcurrido en el backend
+        elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
+        print(f"[SISTEMA EXPERTO] Inferencia completada con éxito en {elapsed_ms} ms.")
+        print(f"  - Diagnóstico: {result.get('diagnosis')} (Certeza: {result.get('certainty')}%)")
+        print(f"  - Estado: {result.get('state')}")
+        
+        # Añadir el delay al resultado para el frontend
+        result["inference_time_ms"] = elapsed_ms
+        
         return JSONResponse(content=result)
     except Exception as e:
         # Revertir a espera en caso de error
         await manager.send_to_rapiro({"type": "state", "value": "waiting"})
+        print(f"[SISTEMA EXPERTO] ERROR durante la inferencia: {str(e)}")
         return JSONResponse(status_code=500, content={"ok": False, "message": str(e)})
 
 @app.post("/api/predict")
 async def predict(image: UploadFile = File(...)):
     """Clasifica la morfología de una lesión cutánea a partir de una imagen."""
+    import time
+    
     # Notificar estado de captura (gesto de pulgar arriba en Rapiro)
     await manager.send_to_rapiro({"type": "state", "value": "capturing"})
     # Dar tiempo a que el robot realice el gesto
@@ -129,8 +154,7 @@ async def predict(image: UploadFile = File(...)):
     
     # Cambiar a estado de análisis
     await manager.send_to_rapiro({"type": "state", "value": "analyzing"})
-
-    import time
+ 
     import tensorflow as tf
     import traceback
     tmp_path = None
@@ -139,21 +163,32 @@ async def predict(image: UploadFile = File(...)):
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp.write(await image.read())
             tmp_path = tmp.name
+ 
+        file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
+        print(f"\n[CNN VISION] Solicitud de predicción recibida:")
+        print(f"  - Nombre de archivo: {image.filename}")
+        print(f"  - Tamaño de archivo: {file_size_kb} KB")
 
         t0 = time.perf_counter()
         prediction = await asyncio.to_thread(predecir_morfologia, tmp_path)
         elapsed = time.perf_counter() - t0
-
+        elapsed_ms = round(elapsed * 1000, 1)
+ 
         gpus = tf.config.list_physical_devices('GPU')
         device = "GPU (CUDA)" if len(gpus) > 0 else "CPU (TensorFlow)"
-        file_size_kb = round(os.path.getsize(tmp_path) / 1024, 1)
-
+ 
         await manager.send_to_rapiro({"type": "state", "value": "waiting"})
+        
+        print(f"[CNN VISION] Inferencia completada con éxito en {elapsed_ms} ms.")
+        print(f"  - Morfología: {prediction.get('morfologia')}")
+        print(f"  - Confianza: {round(prediction.get('confianza', 0.0) * 100, 1)}%")
+        print(f"  - Dispositivo: {device}")
+        
         return JSONResponse(content={
             "ok": True, 
             "prediction": prediction,
             "stats": {
-                "inference_time_ms": round(elapsed * 1000, 1),
+                "inference_time_ms": elapsed_ms,
                 "file_size_kb": file_size_kb,
                 "device": device
             }
@@ -161,6 +196,7 @@ async def predict(image: UploadFile = File(...)):
     except Exception as e:
         traceback.print_exc()
         await manager.send_to_rapiro({"type": "state", "value": "waiting"})
+        print(f"[CNN VISION] ERROR durante la inferencia: {str(e)}")
         return JSONResponse(status_code=400, content={"ok": False, "error": str(e)})
     finally:
         if tmp_path and os.path.exists(tmp_path):
@@ -176,7 +212,7 @@ async def health_check():
 async def websocket_rapiro(websocket: WebSocket):
     """Canal persistente para la Raspberry Pi (envía cámara y telemetría, recibe comandos)."""
     await manager.connect_rapiro(websocket)
-    print("Conexión WebSocket establecida con Rapiro.")
+    print("[WEBSOCKET] Conexión establecida con Rapiro.")
     # Notificar a los dashboards
     await manager.broadcast_to_dashboards({"type": "rapiro_status", "connected": True})
     
@@ -192,13 +228,14 @@ async def websocket_rapiro(websocket: WebSocket):
                 await manager.broadcast_to_dashboards(data)
     except WebSocketDisconnect:
         manager.disconnect_rapiro()
-        print("Conexión WebSocket con Rapiro cerrada.")
+        print("[WEBSOCKET] Conexión con Rapiro cerrada.")
         await manager.broadcast_to_dashboards({"type": "rapiro_status", "connected": False})
 
 @app.websocket("/ws/dashboard")
 async def websocket_dashboard(websocket: WebSocket):
     """Canal para el navegador del médico (recibe cámara, envía acciones del robot)."""
     await manager.connect_dashboard(websocket)
+    print("[WEBSOCKET] Conexión establecida con Dashboard.")
     # Enviar estado actual de Rapiro al conectar
     is_connected = manager.rapiro_ws is not None
     await websocket.send_json({"type": "rapiro_status", "connected": is_connected})
@@ -210,7 +247,8 @@ async def websocket_dashboard(websocket: WebSocket):
             await manager.send_to_rapiro(data)
     except WebSocketDisconnect:
         manager.disconnect_dashboard(websocket)
+        print("[WEBSOCKET] Conexión con Dashboard cerrada.")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, access_log=False)
