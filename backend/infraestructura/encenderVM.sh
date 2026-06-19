@@ -1,0 +1,1 @@
+aws ec2 start-instances --instance-ids i-0e79c2f83e445cd55 --region sa-east-1 --no-cli-pager

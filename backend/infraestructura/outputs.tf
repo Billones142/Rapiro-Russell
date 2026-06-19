@@ -1,9 +1,14 @@
-output "instancia_id" {
-  description = "ID de la instancia EC2 creada"
-  value       = aws_instance.web_server.id
+output "container_id" {
+  description = "ID del contenedor Docker creado"
+  value       = docker_container.seadd_service.id
 }
 
-output "ip_publica" {
-  description = "Dirección IP pública de la máquina virtual"
-  value       = aws_instance.web_server.public_ip
+output "container_name" {
+  description = "Nombre del contenedor Docker"
+  value       = docker_container.seadd_service.name
+}
+
+output "url_acceso" {
+  description = "URL para acceder al dashboard"
+  value       = "http://localhost:${var.external_port}/"
 }

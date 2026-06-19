@@ -1,26 +1,21 @@
-# Buscar la última AMI de Ubuntu 22.04 LTS activa
-data "aws_ami" "ubuntu" {
-  most_recent = true
-
-  filter {
-    name     = "name"
-    values   = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+# Construir la imagen Docker local de la aplicación
+resource "docker_image" "seadd_backend" {
+  name = "seadd-backend:latest"
+  build {
+    context    = "${path.module}/.."
+    dockerfile = "Dockerfile"
   }
-
-  filter {
-    name     = "virtualization-type"
-    values   = ["hvm"]
-  }
-
-  owners = ["099720109477"] # ID oficial de Canonical (creadores de Ubuntu)
+  keep_locally = true
 }
 
-# Definir la instancia EC2
-resource "aws_instance" "web_server" {
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = var.instance_type
+# Crear y ejecutar el contenedor Docker
+resource "docker_container" "seadd_service" {
+  image = docker_image.seadd_backend.image_id
+  name  = "seadd-service"
+  restart = "always"
 
-  tags = {
-    Name = var.instance_name
+  ports {
+    internal = 8000
+    external = var.external_port
   }
 }

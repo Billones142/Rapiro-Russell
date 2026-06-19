@@ -1,215 +1,278 @@
 """
-Rapiro test server for Raspberry Pi.
-
-Exposes an HTTP API to run serial communication tests, servomotor checks,
-eye LED (RGB) tests and predefined motion commands against the Rapiro robot.
+Cliente Rapiro para la Raspberry Pi.
+Conecta de forma saliente al Backend usando WebSockets para transmitir
+el video de la cámara y recibir comandos de control y cambios de estado (LEDs).
 """
 
 import json
 import os
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import parse_qs, urlparse
+import time
+import threading
+
+# Importar websocket-client
+try:
+    import websocket
+except ImportError:
+    websocket = None
+
+# Soporte de cámara con fallback
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+try:
+    from PIL import Image, ImageDraw
+    import io
+except ImportError:
+    Image = None
 
 from rapiro_client import RapiroSerialClient
-from test_suite import (
-    test_all_motions,
-    test_all_servos,
-    test_full_diagnostic,
-    test_motion,
-    test_neopixel,
-    test_serial,
-    test_servo,
-)
 
-HOST = os.environ.get("RAPIRO_HTTP_HOST", "0.0.0.0")
-PORT = int(os.environ.get("RAPIRO_HTTP_PORT", "8080"))
+BACKEND_WS_URL = os.environ.get("SEADD_BACKEND_WS", "ws://seadd.ddns.net:8000/ws/rapiro")
 
 client = RapiroSerialClient()
 
-
-def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict) -> None:
-    body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
-    handler.send_response(status)
-    handler.send_header("Content-Type", "application/json; charset=utf-8")
-    handler.send_header("Content-Length", str(len(body)))
-    handler.send_header("Access-Control-Allow-Origin", "*")
-    handler.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    handler.send_header("Access-Control-Allow-Headers", "Content-Type")
-    handler.end_headers()
-    handler.wfile.write(body)
-
-
-def _read_json_body(handler: BaseHTTPRequestHandler) -> dict:
-    length = int(handler.headers.get("Content-Length", 0))
-    if length == 0:
-        return {}
-    raw = handler.rfile.read(length)
-    try:
-        return json.loads(raw.decode("utf-8"))
-    except json.JSONDecodeError:
-        return {}
+# --- SIMULACIÓN DE IMÁGENES (Pillow) ---
+def make_mock_frame():
+    """Genera una imagen de simulación de lesión en formato JPEG con calidad optimizada."""
+    if Image is None:
+        return b""
+    # Crear un lienzo simulando piel
+    img = Image.new("RGB", (320, 240), color=(30, 41, 59))
+    draw = ImageDraw.Draw(img)
+    # Dibujar lesión simulada (patrón eritematoso difuso)
+    draw.ellipse([110, 70, 210, 170], fill=(153, 27, 27))
+    draw.ellipse([130, 90, 190, 150], fill=(252, 165, 165))
+    
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=75)
+    return buf.getvalue()
 
 
-API_ROUTES = {
-    "GET": {
-        "/": lambda _h, _q, _b: {
-            "service": "Rapiro Test Server",
-            "version": "1.0.0",
-            "endpoints": {
-                "GET /": "API documentation",
-                "GET /health": "Server health check",
-                "GET /status": "Serial connection and robot info",
-                "POST /serial/connect": "Open serial port",
-                "POST /serial/disconnect": "Close serial port",
-                "POST /serial/test": "Test serial communication (#C)",
-                "POST /command": '{"command": "#M0"} — send raw command',
-                "POST /test/servos": "Test all 12 servomotors",
-                "POST /test/servos/{id}": "Test a single servo (0-11)",
-                "POST /test/neopixel": "Cycle eye RGB LED colors",
-                "POST /test/motions": "Run safe predefined motions (M0,M5-M9)",
-                "POST /test/motions/{id}": "Run a single motion (0-9)",
-                "POST /test/full": "Full diagnostic (serial + LED + servos + motions)",
-            },
-        },
-        "/health": lambda _h, _q, _b: {"ok": True, "status": "running"},
-        "/status": lambda _h, _q, _b: client.status(),
-    },
-    "POST": {
-        "/serial/connect": lambda _h, _q, _b: client.connect(),
-        "/serial/disconnect": lambda _h, _q, _b: client.disconnect(),
-        "/serial/test": lambda _h, _q, _b: test_serial(client),
-        "/command": lambda _h, _q, b: client.send_command(
-            b.get("command", ""),
-            wait=float(b.get("wait", 1.8)),
-        ),
-        "/test/servos": lambda _h, _q, b: test_all_servos(
-            client, duration_ms=int(b.get("duration_ms", 400))
-        ),
-        "/test/neopixel": lambda _h, _q, b: test_neopixel(
-            client, pause=float(b.get("pause", 0.8))
-        ),
-        "/test/motions": lambda _h, _q, b: test_all_motions(
-            client, motion_pause=float(b.get("pause", 2.5))
-        ),
-        "/test/full": lambda _h, _q, _b: test_full_diagnostic(client),
-    },
-}
+# --- GESTOR DE EFECTOS LED AUTOMATIZADOS ---
+class LedEffectManager:
+    """Administra las secuencias de animación LED de los ojos en un hilo en segundo plano."""
+    def __init__(self, serial_client: RapiroSerialClient):
+        self.client = serial_client
+        self.state = "waiting"
+        self.morphology = None
+        self._stop_event = threading.Event()
+        self._thread = None
+
+    def start(self):
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
+        self._thread.start()
+
+    def set_state(self, state: str, morphology: str = None):
+        print(f"[LED Manager] Cambiando a estado: {state}")
+        self.state = state
+        self.morphology = morphology
+
+    def _run_loop(self):
+        last_state = None
+        
+        while not self._stop_event.is_set():
+            state = self.state
+
+            if state != last_state:
+                print(f"[LED Manager] Cambiando a estado: {state}")
+                
+                # 1. Esperando al dermatólogo (Cyan estático y posición inicial)
+                if state == "waiting":
+                    self.client.send_command("#PR000G128B128T005", wait=0.1)
+                    self.client.send_command("#M0", wait=1.0)
+
+                # 2. Capturando lesión (Amarillo + Brazo derecho arriba + Garra cerrada/pulgar arriba)
+                elif state == "capturing":
+                    # Ojos amarillos, S02 (hombro derecho roll) a 120, S03 (brazo derecho pitch) a 90, S04 (garra derecha) a 50
+                    self.client.send_command("#PS02A120S03A090S04A050R255G200B000T005", wait=1.0)
+
+                # 3. Analizando la imagen con la red de visión (Violeta estático)
+                elif state == "analyzing":
+                    self.client.send_command("#PR128G000B128T005", wait=0.5)
+
+                # 4. Inferencia del sistema experto en curso (Naranja estático)
+                elif state == "inferring":
+                    self.client.send_command("#PR255G100B000T005", wait=0.5)
+
+                # 5. Inferencia completa (Gestos específicos según morfología + 3 segundos de pose y vuelta a waiting)
+                elif state == "result_ready":
+                    morph = (self.morphology or "").lower().strip()
+                    if "escama" in morph:
+                        self.client.send_command("#M1", wait=0.2)
+                        self.client.send_command("#L02252525", wait=0.2)
+                        self.client.send_command("#M5", wait=0.2)
+                        time.sleep(3.0)
+                    elif "papula" in morph or "pápula" in morph:
+                        self.client.send_command("#M1", wait=0.2)
+                        self.client.send_command("#L02250000", wait=0.2)
+                        self.client.send_command("#M2", wait=0.2)
+                        time.sleep(3.0)
+                    elif "macula" in morph or "mácula" in morph:
+                        self.client.send_command("#M1", wait=0.2)
+                        self.client.send_command("#L00000025", wait=0.2)
+                        self.client.send_command("#M6", wait=0.2)
+                        time.sleep(3.0)
+                    else:
+                        self.client.send_command("#PR000G255B000T005", wait=0.1)
+                        self.client.send_command("#M5", wait=2.5)
+                        time.sleep(3.0)
+                    
+                    self.set_state("waiting")
+
+                last_state = state
+
+            time.sleep(0.1)
+
+led_manager = LedEffectManager(client)
 
 
-class RapiroRequestHandler(BaseHTTPRequestHandler):
-    """HTTP handler that maps REST endpoints to Rapiro test routines."""
+# --- HILO DE CONEXIÓN WEBSOCKET DE CLIENTE (TÚNEL REVERSO) ---
+def start_websocket_client():
+    if websocket is None:
+        print("[WS Client] ERROR: 'websocket-client' no está instalado. El túnel reverso no arrancará.")
+        return
 
-    def log_message(self, format: str, *args) -> None:
-        print(f"[HTTP] {self.address_string()} - {format % args}")
-
-    def do_OPTIONS(self) -> None:
-        self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.end_headers()
-
-    def do_GET(self) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path.rstrip("/") or "/"
-        if path == "/":
-            try:
-                ui_path = os.path.join(os.path.dirname(__file__), "index.html")
-                with open(ui_path, "r", encoding="utf-8") as f:
-                    html_content = f.read()
-                body = html_content.encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(body)))
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                self.wfile.write(body)
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "text/plain")
-                self.end_headers()
-                self.wfile.write(f"Error loading UI: {e}".encode("utf-8"))
-            return
-
-        self._dispatch("GET")
-
-    def do_POST(self) -> None:
-        self._dispatch("POST")
-
-    def _dispatch(self, method: str) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path.rstrip("/") or "/"
-        query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
-        body = _read_json_body(self) if method == "POST" else {}
-
-        routes = API_ROUTES.get(method, {})
-
-        # Dynamic routes: /test/servos/{id} and /test/motions/{id}
-        if path.startswith("/test/servos/") and method == "POST":
-            try:
-                servo_id = int(path.split("/")[-1])
-                result = test_servo(
-                    client,
-                    servo_id,
-                    duration_ms=int(body.get("duration_ms", query.get("duration_ms", 400))),
-                )
-                status = 200 if result.get("ok") else 500
-                _json_response(self, status, result)
-                return
-            except ValueError:
-                _json_response(self, 400, {"ok": False, "message": "Invalid servo id"})
-                return
-
-        if path.startswith("/test/motions/") and method == "POST":
-            try:
-                motion_id = int(path.split("/")[-1])
-                result = test_motion(
-                    client,
-                    motion_id,
-                    duration=float(body.get("duration", query.get("duration", 3.0))),
-                )
-                status = 200 if result.get("ok") else 500
-                _json_response(self, status, result)
-                return
-            except ValueError:
-                _json_response(self, 400, {"ok": False, "message": "Invalid motion id"})
-                return
-
-        handler = routes.get(path)
-        if handler is None:
-            _json_response(self, 404, {"ok": False, "message": f"Route not found: {path}"})
-            return
-
+    def on_message(ws, message):
         try:
-            result = handler(self, query, body)
-            status = 200 if result.get("ok", True) else 500
-            _json_response(self, status, result)
-        except Exception as exc:
-            _json_response(self, 500, {"ok": False, "message": str(exc)})
+            data = json.loads(message)
+            if data.get("type") == "command":
+                cmd = data.get("cmd")
+                print(f"[WS Client] Comando serial recibido desde dashboard: {cmd}")
+                client.send_command(cmd)
+            elif data.get("type") == "state":
+                state_val = data.get("value")
+                morph_val = data.get("morphology")
+                led_manager.set_state(state_val, morphology=morph_val)
+        except Exception as e:
+            print(f"[WS Client] Error al procesar mensaje WebSocket: {e}")
+
+    def on_error(ws, error):
+        print(f"[WS Client] Error en la conexión: {error}")
+
+    def on_close(ws, close_status_code, close_msg):
+        print("[WS Client] Conexión cerrada con el servidor backend.")
+
+    def on_open(ws):
+        print("[WS Client] Conectado al backend con éxito. Transmitiendo video...")
+        
+        # Hilo secundario para transmitir video continuamente al backend en binario (JPEG)
+        def video_stream_loop():
+            camera = None
+            print("[Camera Debug] Iniciando verificación de cámara...")
+            
+            if cv2 is None:
+                print("[Camera Debug] AVISO: 'opencv-python' (cv2) no está instalado. No se puede usar la webcam física.")
+            else:
+                print("[Camera Debug] OpenCV está instalado con éxito. Intentando abrir webcam física en index 0 (/dev/video0)...")
+                try:
+                    camera = cv2.VideoCapture(0)
+                    if not camera.isOpened():
+                        print("[Camera Debug] ERROR: No se pudo abrir la webcam física en index 0. ¿Está ocupada o desconectada?")
+                        camera = None
+                    else:
+                        width = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
+                        height = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                        print(f"[Camera Debug] EXITO: Cámara física abierta correctamente. Resolución: {width}x{height}")
+                except Exception as cam_err:
+                    print(f"[Camera Debug] EXPORT EXCEPTION al abrir la cámara: {cam_err}")
+                    camera = None
+
+            if Image is None:
+                print("[Camera Debug] AVISO: 'Pillow' (PIL) no está instalado. La simulación de imagen no estará disponible.")
+
+            try:
+                first_frame_logged = False
+                while ws.keep_running:
+                    frame_bytes = None
+                    
+                    if camera is not None:
+                        success, frame = camera.read()
+                        if success:
+                            if not first_frame_logged:
+                                print("[Camera Debug] Frame capturado con éxito de la cámara física. Codificando a JPEG (calidad 75)...")
+                            # Comprimir la imagen usando JPEG con calidad 75 para reducir ancho de banda
+                            ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+                            if ret:
+                                frame_bytes = buffer.tobytes()
+                                if not first_frame_logged:
+                                    print(f"[Camera Debug] JPEG codificado correctamente ({len(frame_bytes)} bytes). Enviando...")
+                                    first_frame_logged = True
+                            else:
+                                if not first_frame_logged:
+                                    print("[Camera Debug] ERROR: Falló la codificación JPEG de OpenCV.")
+                        else:
+                            print("[Camera Debug] ERROR: Falló la lectura del frame de la cámara física (camera.read() devolvió False).")
+                            camera.release()
+                            camera = None # Forzar fallback
+                    
+                    if frame_bytes is None:
+                        if not first_frame_logged:
+                            print("[Camera Debug] Usando generador de imágenes de simulación (Pillow)...")
+                            first_frame_logged = True
+                        frame_bytes = make_mock_frame()
+
+                    if frame_bytes:
+                        # Enviar el frame como mensaje binario opcode
+                        ws.send(frame_bytes, opcode=websocket.ABNF.OPCODE_BINARY)
+                    
+                    # 5 fotogramas por segundo (suficiente para fluidez clínica y ahorro de red)
+                    time.sleep(0.2)
+            except Exception as stream_err:
+                print(f"[WS Client] Error en loop de transmisión: {stream_err}")
+            finally:
+                if camera is not None:
+                    print("[Camera Debug] Liberando cámara física...")
+                    camera.release()
+
+        threading.Thread(target=video_stream_loop, daemon=True).start()
+
+    def client_reconnect_loop():
+        while True:
+            try:
+                print(f"[WS Client] Conectando al backend en: {BACKEND_WS_URL}")
+                ws = websocket.WebSocketApp(
+                    BACKEND_WS_URL,
+                    on_open=on_open,
+                    on_message=on_message,
+                    on_error=on_error,
+                    on_close=on_close
+                )
+                ws.run_forever()
+            except Exception as conn_err:
+                print(f"[WS Client] Error de conexión: {conn_err}")
+            print("[WS Client] Reintentando conexión en 5 segundos...")
+            time.sleep(5)
+
+    threading.Thread(target=client_reconnect_loop, daemon=True).start()
 
 
-def run_server() -> None:
-    """Start the HTTP test server and optionally auto-connect serial."""
-    auto_connect = os.environ.get("RAPIRO_AUTO_CONNECT", "true").lower() == "true"
-    if auto_connect:
-        result = client.connect()
-        if result.get("ok"):
-            print(f"Serial connected on {client.port} @ {client.baud} baud")
-        else:
-            print(f"Serial auto-connect failed: {result.get('message')}")
-            print("Server will start anyway; use POST /serial/connect when ready.")
+def main() -> None:
+    # Auto-conectar puerto serie con Rapiro Arduino
+    client.connect()
+    if client.is_connected:
+        print(f"Puerto Serie conectado en {client.port} @ {client.baud} baud")
+    else:
+        print("Puerto Serie falló (se ejecutará en modo simulación de robot).")
 
-    server = HTTPServer((HOST, PORT), RapiroRequestHandler)
-    print(f"Rapiro test server listening on http://{HOST}:{PORT}")
-    print("Press Ctrl+C to stop.")
+    # Iniciar animador LED de ojos
+    led_manager.start()
 
+    # Iniciar el cliente WebSocket saliente hacia el servidor en la nube
+    start_websocket_client()
+
+    print("[SEADD Client] Rapiro iniciado y en funcionamiento. Presiona Ctrl+C para salir.")
+    
+    # Mantener el hilo principal activo
     try:
-        server.serve_forever()
+        while True:
+            time.sleep(1.0)
     except KeyboardInterrupt:
-        print("\nShutting down...")
+        print("\nDeteniendo cliente Rapiro...")
         client.disconnect()
-        server.server_close()
 
 
 if __name__ == "__main__":
-    run_server()
+    main()

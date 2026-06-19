@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEADD - Dashboard Asistente de Diagnóstico Dermatológico</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-card: #121826;
+            --bg-card-hover: #182032;
+            --border-glow: rgba(99, 102, 241, 0.2);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-primary: #6366f1;
+            /* Indigo */
+            --accent-secondary: #10b981;
+            /* Emerald */
+            --accent-warning: #f59e0b;
+            /* Amber */
+            --accent-danger: #ef4444;
+            /* Rose */
+            --font-family: 'Outfit', 'Inter', sans-serif;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+        }
+
+        header {
+            background: rgba(18, 24, 38, 0.7);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.25rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 2.25rem;
+            height: 2.25rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .logo-text h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            background: linear-gradient(to right, #ffffff, #a5b4fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            padding: 0.375rem 0.875rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.connected {
+            background-color: var(--accent-secondary);
+            box-shadow: 0 0 8px var(--accent-secondary);
+        }
+
+        .status-dot.disconnected {
+            background-color: var(--accent-danger);
+            box-shadow: 0 0 8px var(--accent-danger);
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1600px;
+            width: 100%;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            transition: var(--transition);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .card:hover {
+            border-color: var(--border-glow);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.05);
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #ffffff;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        .card-title span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Video feed section */
+        .video-container {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid var(--border-color);
+        }
+
+        .video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.65);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1.5rem;
+            transition: var(--transition);
+            z-index: 10;
+        }
+
+        .video-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-primary), #4f46e5);
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-family: var(--font-family);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+        }
+
+        /* Controls card grid */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        /* Forms Layout */
+        .workspace {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .double-entry-grid {
+            display: grid;
+            grid-template-columns: 1fr; /* Cambiado a 1fr ya que el análisis por computadora está desactivado */
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .double-entry-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-section {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+        }
+
+        .form-section-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .select-input,
+        .number-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.625rem 0.75rem;
+            border-radius: 0.5rem;
+            font-family: var(--font-family);
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .select-input:focus,
+        .number-input:focus {
+            border-color: var(--accent-primary);
+            outline: none;
+            background: var(--bg-card-hover);
+        }
+
+        .select-input.low-confidence {
+            border-color: var(--accent-warning, #f59e0b);
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+        }
+
+        .checkbox-group {
+            flex-direction: row;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .checkbox-input {
+            width: 1.1rem;
+            height: 1.1rem;
+            accent-color: var(--accent-primary);
+            cursor: pointer;
+        }
+
+        /* Results Panel */
+        .results-box {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 850px) {
+            .results-box {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .inference-gauge-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .gauge-svg {
+            width: 150px;
+            height: 150px;
+            transform: rotate(-90deg);
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 12;
+        }
+
+        .gauge-fill {
+            fill: none;
+            stroke: var(--accent-secondary);
+            stroke-width: 12;
+            stroke-linecap: round;
+            stroke-dasharray: 440;
+            stroke-dashoffset: 440;
+            transition: stroke-dashoffset 1s ease-in-out;
+        }
+
+        .gauge-text {
+            position: absolute;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .inference-details {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-info {
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* Rules list styled */
+        .rules-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .rules-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .rules-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .rule-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .rule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .rule-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Recommendations & alert */
+        .recommendation-list {
+            padding-left: 1.25rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .warning-alert {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Fuzzy progress bars */
+        .fuzzy-visualizer {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .fuzzy-bar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .fuzzy-bar-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .fuzzy-bar-bg {
+            width: 100%;
+            height: 0.375rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .fuzzy-bar-fill {
+            height: 100%;
+            background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+            width: 0%;
+            transition: width 0.8s ease-out;
+        }
+
+        .loading-ring {
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Mock stream styling */
+        .mock-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.9) contrast(1.05);
+        }
+
+        .simulation-banner {
+            position: absolute;
+            bottom: 0.5rem;
+            right: 0.5rem;
+            background: rgba(0, 0, 0, 0.75);
+            color: var(--accent-warning);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .ai-glow-card {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .alternative-item {
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            padding-bottom: 0.25rem;
+        }
+
+        @keyframes blink-glow {
+            0% {
+                border-color: var(--border-glow);
+                box-shadow: 0 0 5px rgba(99, 102, 241, 0.1);
+            }
+
+            50% {
+                border-color: var(--accent-secondary);
+                box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+                background-color: rgba(16, 185, 129, 0.05);
+            }
+
+            100% {
+                border-color: var(--border-glow);
+                box-shadow: 0 0 5px rgba(99, 102, 241, 0.1);
+            }
+        }
+
+        .blink-active {
+            animation: blink-glow 0.8s ease-in-out 2;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo-container">
+            <div class="logo-icon">S</div>
+            <div class="logo-text">
+                <h1>SEADD</h1>
+                <p>Asistente Dermatológico Neuro-Simbólico</p>
+            </div>
+        </div>
+        <div class="connection-status">
+            <div class="status-badge">
+                <span class="status-dot disconnected" id="pi-status-dot"></span>
+                <span id="pi-status-text">Rapiro: Desconectado</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Left Column: Robot & Camera feed -->
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
+            <!-- Vision / Camera Card -->
+            <div class="card">
+                <div class="card-title">
+                    <span>📷 Captura de Lesión</span>
+                    <span class="badge badge-secondary" id="camera-mode-badge">Sin Señal</span>
+                </div>
+                <div class="video-container" id="video-frame-container">
+                    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'>Esperando señal de video de la Raspberry Pi...</text></svg>"
+                        class="mock-image" id="video-feed-img" alt="Video stream">
+                    <div class="simulation-banner hidden" id="sim-banner">Sin Señal</div>
+
+                    <div class="video-overlay" id="video-overlay-msg">
+                        <p style="margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">Esperando conexión del
+                            robot...</p>
+                        <p
+                            style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem; max-width: 80%;">
+                            Rapiro se conectará dinámicamente desde el consultorio.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-grid">
+                <button class="btn" id="btn-capture" onclick="triggerCapture()">
+                    <span>📸 Capturar Imagen</span>
+                </button>
+                <button class="btn btn-secondary" id="btn-mock-toggle" onclick="enableMockCamera()">
+                    <span>Reset Vista</span>
+                </button>
+            </div>
+
+            <!-- Resultados del Modelo de Visión -->
+            <div class="card hidden" id="vision-results-card" style="border-color: rgba(99, 102, 241, 0.3);">
+                <div class="card-title">
+                    <span>👁️ Resultados del Modelo de Visión (CNN)</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Morfología detectada:</span>
+                        <span style="font-size: 1.1rem; font-weight: 600; color: #fff;"
+                            id="vision-result-morphology">-</span>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Confianza / Certeza:</span>
+                        <span class="badge badge-info" id="vision-result-confidence"
+                            style="font-size: 0.9rem; font-weight: 600;">-</span>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Tiempo de Inferencia:</span>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: var(--accent-secondary);"
+                            id="vision-result-time">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.9rem; color: var(--text-secondary);">Dispositivo:</span>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: #fff;"
+                            id="vision-result-hardware">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Medical Assessment & Inference -->
+        <div class="workspace">
+            <!-- Double Entry Form Card -->
+            <div class="card ai-glow-card">
+                <div class="card-title">
+                    <span>📋 Historial Clínico</span>
+                    <span class="badge badge-success" id="ai-status-badge">AI Lista</span>
+                </div>
+
+                <div class="double-entry-grid">
+                    <!-- Left Form: Patient self report -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            👤 Autoreporte del Paciente
+                        </div>
+                        <div class="form-group">
+                            <label>Localización</label>
+                            <select class="select-input" id="pat-location">
+                                <option value="" selected></option>
+                                <option value="codos">Codos</option>
+                                <option value="cara">Cara / Rostro</option>
+                                <option value="pies">Pies / Extremidades</option>
+                                <option value="uñas">Uñas</option>
+                                <option value="flexuras">Zonas de Flexura (pliegues)</option>
+                                <option value="otros">Otros</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Morfología (Observada por Paciente)</label>
+                            <select class="select-input" id="pat-morphology">
+                                <option value="" selected></option>
+                                <option value="escama">Escama</option>
+                                <option value="pápula">Pápula</option>
+                                <option value="ampolla">Ampolla / Vesícula</option>
+                                <option value="mácula">Mácula (mancha)</option>
+                                <option value="engrosamiento">Engrosamiento</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Color predominante</label>
+                            <select class="select-input" id="pat-color">
+                                <option value="" selected></option>
+                                <option value="rojo">Rojo eritematoso</option>
+                                <option value="blanco nacarado">Blanco nacarado (plateado)</option>
+                                <option value="rosado">Rosado</option>
+                                <option value="amarillento">Amarillento</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Intensidad de picazón (0 a 10)</label>
+                            <input type="number" class="number-input" id="pat-pruritus" min="0" max="10" value="8"
+                                step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label>Antigüedad de la lesión (Meses)</label>
+                            <input type="number" class="number-input" id="pat-duration" min="0" value="2" step="0.5">
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" class="checkbox-input" id="pat-stress" checked>
+                            <label for="pat-stress">¿Presenta estrés o ansiedad reciente?</label>
+                        </div>
+                    </div>
+
+                    <!-- Right Section: Computer Analysis (Visión) -->
+                    <!-- <div class="form-section" style="border-color: rgba(99, 102, 241, 0.15); display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="form-section-title" style="color: var(--accent-primary);">
+                            💻 Análisis por Computadora
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Morfología Detectada</span>
+                                <span style="font-size: 0.95rem; font-weight: 600; color: #fff;" id="comp-morphology">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Confianza / Certeza</span>
+                                <span class="badge badge-info" id="comp-confidence">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Tiempo de Inferencia</span>
+                                <span style="font-size: 0.9rem; font-weight: 600; color: var(--accent-secondary);" id="comp-time">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Tamaño de Imagen</span>
+                                <span style="font-size: 0.9rem; font-weight: 600; color: #fff;" id="comp-img-size">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Hardware / Aceleración</span>
+                                <span style="font-size: 0.9rem; font-weight: 600; color: #fff;" id="comp-hardware">-</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">Estado de Red Neuronal</span>
+                                <span class="badge badge-success" id="comp-status">Cargado</span>
+                            </div>
+                        </div>
+                    </div> -->
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center; justify-content: center;">
+                    <button class="btn" id="btn-infer" onclick="runInference()" style="flex: 1; max-width: 400px;">
+                        <span>🧠 Iniciar Inferencia Experta</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Panel Card -->
+            <div class="card id-glow-card hidden" id="results-card">
+                <div class="card-title">
+                    <span>💡 Orientación Diagnóstica Diferencial</span>
+                    <span class="badge badge-success" id="result-state-badge">Agudo</span>
+                </div>
+
+                <!-- Warning (Mostrada arriba y con letra más grande) -->
+                <div class="warning-alert"
+                    style="font-size: 1.15rem; margin-top: 0.75rem; margin-bottom: 1.25rem; border-color: rgba(239, 68, 68, 0.35); line-height: 1.5;">
+                    <span style="font-size: 1.8rem; margin-right: 0.5rem;">⚠️</span>
+                    <div>
+                        <strong>Advertencia Importante:</strong> El diagnóstico definitivo es responsabilidad exclusiva
+                        del especialista médico. Este software es un prototipo de soporte a la decisión clínica y no
+                        cuenta con aprobación regulatoria para su uso clínico independiente.
+                    </div>
+                </div>
+
+                <div class="results-box">
+                    <!-- Certainty Circle Gauge -->
+                    <div class="inference-gauge-container">
+                        <div style="position: relative; display: flex; align-items: center; justify-content: center;">
+                            <svg class="gauge-svg">
+                                <circle class="gauge-bg" cx="75" cy="75" r="70"></circle>
+                                <circle class="gauge-fill" id="result-gauge-fill" cx="75" cy="75" r="70"></circle>
+                            </svg>
+                            <div class="gauge-text" id="result-cert-value">99%</div>
+                        </div>
+                        <h3 id="result-main-diag" style="margin-top: 1rem; font-size: 1.25rem;">Psoriasis</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Nivel de Certeza</p>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;" id="result-time-container">
+                            Tiempo de Inferencia: <span id="result-time-value" style="color: var(--accent-secondary); font-weight: 600;">-</span>
+                        </p>
+                    </div>
+
+                    <!-- Detailed inference outputs -->
+                    <div class="inference-details">
+                        <!-- Alternatives list -->
+                        <div id="alternatives-box">
+                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">Diagnósticos
+                                Diferenciales Alternativos</h4>
+                            <div id="alternatives-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <!-- Alternatives go here -->
+                            </div>
+                        </div>
+
+                        <!-- Fuzzy variables memberships -->
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">Membresía Difusa de
+                                Prurito (Lógica Difusa)</h4>
+                            <div class="fuzzy-visualizer" id="fuzzy-visualizer">
+                                <!-- Bars will be updated -->
+                            </div>
+                        </div>
+
+                        <!-- Recommendations list -->
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">Sugerencias
+                                Terapéuticas Iniciales</h4>
+                            <ul class="recommendation-list" id="recommendations-list">
+                                <!-- Suggestions go here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explanation / Rules Fired -->
+                <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
+                    <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem;">Justificación / Cadena de
+                        Razonamiento (Auditoría de Reglas)</h4>
+                    <ul class="rules-list" id="rules-fired-list">
+                        <!-- Rules go here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = window.location.origin;
+        let ws;
+        let objectUrl = null;
+        let latestFrameBlob = null;
+        let isFrozen = false;
+
+        // Auto-conectar WebSocket al cargar la página
+        window.addEventListener('load', () => {
+            connectWebSocket();
+            enableMockCamera();
+        });
+
+        function connectWebSocket() {
+            const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws/dashboard`;
+
+            console.log(`Conectando WebSocket a: ${wsUrl}`);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log("Conectado al servidor de WebSocket (Dashboard).");
+            };
+
+            ws.onmessage = (event) => {
+                if (event.data instanceof Blob) {
+                    if (isFrozen) {
+                        return; // Si la captura está congelada en pantalla, no actualizar con nuevos frames
+                    }
+                    // Es un frame de video binario de Rapiro
+                    latestFrameBlob = event.data;
+                    if (objectUrl) {
+                        URL.revokeObjectURL(objectUrl);
+                    }
+                    objectUrl = URL.createObjectURL(event.data);
+                    document.getElementById("video-feed-img").src = objectUrl;
+                    document.getElementById("video-overlay-msg").classList.add("hidden");
+                    document.getElementById("sim-banner").classList.add("hidden");
+
+                    const badge = document.getElementById("camera-mode-badge");
+                    badge.innerText = "Cámara Real";
+                    badge.className = "badge badge-success";
+                } else {
+                    // Es telemetría JSON
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === "rapiro_status") {
+                            setPiConnected(data.connected);
+                        }
+                    } catch (e) {
+                        console.error("Error al procesar mensaje JSON de WebSocket", e);
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                console.log("WebSocket cerrado. Reintentando en 3 segundos...");
+                setPiConnected(false);
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = (err) => {
+                console.error("WebSocket error:", err);
+                ws.close();
+            };
+        }
+
+        function setPiConnected(connected) {
+            const dot = document.getElementById("pi-status-dot");
+            const label = document.getElementById("pi-status-text");
+            const overlay = document.getElementById("video-overlay-msg");
+
+            if (connected) {
+                dot.className = "status-dot connected";
+                label.innerText = "Rapiro: Conectado (Websocket)";
+                overlay.classList.add("hidden");
+            } else {
+                dot.className = "status-dot disconnected";
+                label.innerText = "Rapiro: Desconectado";
+                overlay.classList.remove("hidden");
+                enableMockCamera();
+            }
+        }
+
+        function sendRapiroMotion(motionId) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "command", cmd: `#M${motionId}` }));
+            } else {
+                alert("WebSocket no conectado al backend.");
+            }
+        }
+
+        function enableMockCamera() {
+            isFrozen = false; // Descongelar el video stream
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
+            latestFrameBlob = null;
+            const img = document.getElementById("video-feed-img");
+            img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'>Esperando señal de video de la Raspberry Pi...</text></svg>";
+            document.getElementById("camera-mode-badge").innerText = "Sin Señal";
+            document.getElementById("camera-mode-badge").className = "badge badge-secondary";
+            document.getElementById("sim-banner").classList.add("hidden");
+        }
+
+        async function triggerCapture() {
+            if (!latestFrameBlob) {
+                alert("No hay señal de video activa de Rapiro para capturar. Asegúrese de que el robot esté conectado y transmitiendo.");
+                return;
+            }
+
+            isFrozen = true; // Congelar el frame actual en pantalla
+            const badge = document.getElementById("camera-mode-badge");
+            badge.innerText = "Captura Congelada";
+            badge.className = "badge badge-info";
+
+            const btn = document.getElementById("btn-capture");
+            btn.innerHTML = '<span class="loading-ring"></span> Clasificando...';
+            document.getElementById("ai-status-badge").innerText = "Procesando...";
+            document.getElementById("ai-status-badge").className = "badge badge-warning";
+
+            // El modelo solo conoce 3 clases; las otras 2 son de carga manual exclusiva.
+            const MODEL_TO_FORM_MORPHOLOGY = { macula: "mácula", papula: "pápula", escama: "escama" };
+            const patMorphologySelect = document.getElementById("pat-morphology");
+
+            try {
+                const formData = new FormData();
+                formData.append("image", latestFrameBlob, "capture.jpg");
+
+                const res = await fetch(`${API_URL}/api/predict`, { method: 'POST', body: formData });
+                const data = await res.json();
+                if (!data.ok) throw new Error(data.error || "Fallo de inferencia");
+
+                const { morfologia, confianza } = data.prediction;
+                const stats = data.stats || {};
+
+                patMorphologySelect.value = MODEL_TO_FORM_MORPHOLOGY[morfologia] || morfologia;
+                patMorphologySelect.classList.toggle("low-confidence", confianza < 0.6);
+
+                // Mostrar resultados del modelo de visión abajo de la cámara
+                const visionResultsCard = document.getElementById("vision-results-card");
+                visionResultsCard.classList.remove("hidden");
+
+                const formMorphologyName = MODEL_TO_FORM_MORPHOLOGY[morfologia] || morfologia;
+                document.getElementById("vision-result-morphology").innerText = formMorphologyName.toUpperCase();
+                document.getElementById("vision-result-confidence").innerText = `${Math.round(confianza * 100)}%`;
+                document.getElementById("vision-result-confidence").className = confianza >= 0.6 ? "badge badge-success" : "badge badge-warning";
+                document.getElementById("vision-result-time").innerText = `${stats.inference_time_ms} ms`;
+                document.getElementById("vision-result-hardware").innerText = stats.device || "CPU";
+
+                // Actualizar panel de Análisis por Computadora (Comentado/desactivado de manera correcta)
+                /*
+                const compMorph = document.getElementById("comp-morphology");
+                if (compMorph) {
+                    compMorph.innerText = formMorphologyName.toUpperCase();
+                    document.getElementById("comp-confidence").innerText = `${Math.round(confianza * 100)}%`;
+                    document.getElementById("comp-confidence").className = confianza >= 0.6 ? "badge badge-success" : "badge badge-warning";
+                    document.getElementById("comp-time").innerText = `${stats.inference_time_ms} ms`;
+                    document.getElementById("comp-img-size").innerText = `${stats.file_size_kb} KB`;
+                    document.getElementById("comp-hardware").innerText = stats.device || "CPU";
+                }
+                */
+
+                // Efecto de parpadeo de color
+                visionResultsCard.classList.add("blink-active");
+                patMorphologySelect.classList.add("blink-active");
+                setTimeout(() => {
+                    visionResultsCard.classList.remove("blink-active");
+                    patMorphologySelect.classList.remove("blink-active");
+                }, 1600);
+
+                document.getElementById("ai-status-badge").innerText = `Vision OK (${Math.round(confianza * 100)}%)`;
+                document.getElementById("ai-status-badge").className = "badge badge-success";
+            } catch (err) {
+                console.error(err);
+                alert("Error al contactar con el modelo de visión. Se mantendrán los valores actuales.");
+                document.getElementById("ai-status-badge").innerText = "AI Error";
+                document.getElementById("ai-status-badge").className = "badge badge-warning";
+            } finally {
+                btn.innerText = "📸 Capturar Imagen";
+            }
+        }
+
+        async function runInference() {
+            const btn = document.getElementById("btn-infer");
+
+            // Validar que se hayan seleccionado opciones válidas en los campos de selección (descartar las opciones vacías)
+            const patLocation = document.getElementById("pat-location").value;
+            const patMorphology = document.getElementById("pat-morphology").value;
+            const patColor = document.getElementById("pat-color").value;
+
+            if (!patLocation || !patMorphology || !patColor) {
+                alert("Por favor, complete todas las opciones de selección en el Autoreporte antes de iniciar la inferencia.");
+                btn.innerText = "🧠 Iniciar Inferencia Experta";
+                return;
+            }
+
+            btn.innerHTML = '<span class="loading-ring"></span> Procesando Inferencia...';
+
+            const payload = {
+                location: patLocation,
+                morphology: patMorphology,
+                color: patColor,
+                pruritus: parseFloat(document.getElementById("pat-pruritus").value),
+                duration: parseFloat(document.getElementById("pat-duration").value),
+                stress: document.getElementById("pat-stress").checked
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/api/infer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                displayResults(data);
+            } catch (e) {
+                alert(`Error al ejecutar la inferencia experta: ${e.message}`);
+            } finally {
+                btn.innerText = "🧠 Iniciar Inferencia Experta";
+            }
+        }
+
+        function displayResults(data) {
+            const resultsCard = document.getElementById("results-card");
+            resultsCard.classList.remove("hidden");
+
+            document.getElementById("result-main-diag").innerText = data.diagnosis;
+            document.getElementById("result-cert-value").innerText = `${data.certainty}%`;
+
+            if (data.inference_time_ms !== undefined) {
+                document.getElementById("result-time-value").innerText = `${data.inference_time_ms} ms`;
+            } else {
+                document.getElementById("result-time-value").innerText = "-";
+            }
+
+            const gaugeFill = document.getElementById("result-gauge-fill");
+            const circumference = 2 * Math.PI * 70; // 439.8
+            const offset = circumference - (data.certainty / 100) * circumference;
+            gaugeFill.style.strokeDashoffset = offset;
+
+            if (data.certainty > 80) {
+                gaugeFill.style.stroke = "var(--accent-secondary)";
+            } else if (data.certainty > 50) {
+                gaugeFill.style.stroke = "var(--accent-warning)";
+            } else {
+                gaugeFill.style.stroke = "var(--accent-danger)";
+            }
+
+            const stateBadge = document.getElementById("result-state-badge");
+            stateBadge.innerText = data.state;
+            stateBadge.className = data.state === "Agudo" ? "badge badge-info" : "badge badge-warning";
+
+            const altList = document.getElementById("alternatives-list");
+            altList.innerHTML = "";
+            if (data.alternatives && data.alternatives.length > 0) {
+                data.alternatives.forEach(alt => {
+                    const div = document.createElement("div");
+                    div.className = "alternative-item";
+                    div.innerHTML = `<span>${alt.diagnosis}</span> <span style="font-weight:600; color: #fff;">${alt.certainty}%</span>`;
+                    altList.appendChild(div);
+                });
+            } else {
+                altList.innerHTML = '<p style="font-size:0.8rem; color: var(--text-secondary);">Ningún otro diagnóstico alternativo supera el umbral básico.</p>';
+            }
+
+            const fuzzyBox = document.getElementById("fuzzy-visualizer");
+            fuzzyBox.innerHTML = "";
+            const pr = data.fuzzy_pruritus.memberships;
+            Object.keys(pr).forEach(key => {
+                const pct = pr[key] * 100;
+                const div = document.createElement("div");
+                div.className = "fuzzy-bar-container";
+                div.innerHTML = `
+                    <div class="fuzzy-bar-header">
+                        <span>${key}</span>
+                        <span>${pct.toFixed(0)}%</span>
+                    </div>
+                    <div class="fuzzy-bar-bg">
+                        <div class="fuzzy-bar-fill" style="width: ${pct}%"></div>
+                    </div>
+                `;
+                fuzzyBox.appendChild(div);
+            });
+
+            const recList = document.getElementById("recommendations-list");
+            recList.innerHTML = "";
+            data.recommendations.forEach(rec => {
+                const li = document.createElement("li");
+                li.innerText = rec;
+                recList.appendChild(li);
+            });
+
+            const rulesList = document.getElementById("rules-fired-list");
+            rulesList.innerHTML = "";
+            data.rules_fired.forEach(rule => {
+                const badgeClass = rule.type === "Determinista" ? "badge-info" : (rule.type === "Difusa" ? "badge-success" : "badge-warning");
+                const li = document.createElement("li");
+                li.className = "rule-item";
+                li.innerHTML = `
+                    <div class="rule-header">
+                        <span style="color:#fff;">Regla ${rule.id}</span>
+                        <span class="badge ${badgeClass}">${rule.type}</span>
+                    </div>
+                    <div class="rule-desc">${rule.description}</div>
+                `;
+                rulesList.appendChild(li);
+            });
+
+            resultsCard.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+
+</html>

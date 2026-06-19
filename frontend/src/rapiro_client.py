@@ -84,10 +84,12 @@ class RapiroSerialClient:
         if not command.startswith("#"):
             return {"ok": False, "message": "Commands must start with '#'"}
 
-        with self._lock:
-            if not self.is_connected:
-                return {"ok": False, "message": "Serial port not connected"}
+        if not self.is_connected:
+            print(f"Enviando (simulado): {command}")
+            time.sleep(wait)
+            return {"ok": True, "command": command, "response": "MOCK_OK"}
 
+        with self._lock:
             print(f"Enviando: {command}")
             try:
                 with serial.Serial(self.port, self.baud, timeout=RESPONSE_TIMEOUT) as com:
