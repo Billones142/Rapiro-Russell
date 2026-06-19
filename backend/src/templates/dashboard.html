@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,9 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-primary: #0a0e17;
@@ -17,10 +20,14 @@
             --border-color: rgba(255, 255, 255, 0.06);
             --text-primary: #f3f4f6;
             --text-secondary: #9ca3af;
-            --accent-primary: #6366f1; /* Indigo */
-            --accent-secondary: #10b981; /* Emerald */
-            --accent-warning: #f59e0b; /* Amber */
-            --accent-danger: #ef4444; /* Rose */
+            --accent-primary: #6366f1;
+            /* Indigo */
+            --accent-secondary: #10b981;
+            /* Emerald */
+            --accent-warning: #f59e0b;
+            /* Amber */
+            --accent-danger: #ef4444;
+            /* Rose */
             --font-family: 'Outfit', 'Inter', sans-serif;
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -39,7 +46,7 @@
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
-            background-image: 
+            background-image:
                 radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
                 radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
         }
@@ -274,7 +281,7 @@
 
         .double-entry-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: 1fr; /* Cambiado a 1fr ya que el análisis por computadora está desactivado */
             gap: 1.5rem;
         }
 
@@ -315,7 +322,8 @@
             font-family: 'Inter', sans-serif;
         }
 
-        .select-input, .number-input {
+        .select-input,
+        .number-input {
             width: 100%;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid var(--border-color);
@@ -327,7 +335,8 @@
             transition: var(--transition);
         }
 
-        .select-input:focus, .number-input:focus {
+        .select-input:focus,
+        .number-input:focus {
             border-color: var(--accent-primary);
             outline: none;
             background: var(--bg-card-hover);
@@ -545,14 +554,16 @@
             display: inline-block;
             width: 1.25rem;
             height: 1.25rem;
-            border: 2px solid rgba(255,255,255,0.2);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 50%;
             border-top-color: #fff;
             animation: spin 0.8s linear infinite;
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .hidden {
@@ -600,11 +611,13 @@
                 border-color: var(--border-glow);
                 box-shadow: 0 0 5px rgba(99, 102, 241, 0.1);
             }
+
             50% {
                 border-color: var(--accent-secondary);
                 box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
                 background-color: rgba(16, 185, 129, 0.05);
             }
+
             100% {
                 border-color: var(--border-glow);
                 box-shadow: 0 0 5px rgba(99, 102, 241, 0.1);
@@ -616,6 +629,7 @@
         }
     </style>
 </head>
+
 <body>
     <header>
         <div class="logo-container">
@@ -643,13 +657,15 @@
                     <span class="badge badge-secondary" id="camera-mode-badge">Sin Señal</span>
                 </div>
                 <div class="video-container" id="video-frame-container">
-                    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'>Esperando señal de video de la Raspberry Pi...</text></svg>" 
-                          class="mock-image" id="video-feed-img" alt="Video stream">
+                    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'>Esperando señal de video de la Raspberry Pi...</text></svg>"
+                        class="mock-image" id="video-feed-img" alt="Video stream">
                     <div class="simulation-banner hidden" id="sim-banner">Sin Señal</div>
-                    
+
                     <div class="video-overlay" id="video-overlay-msg">
-                        <p style="margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">Esperando conexión del robot...</p>
-                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem; max-width: 80%;">
+                        <p style="margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">Esperando conexión del
+                            robot...</p>
+                        <p
+                            style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem; max-width: 80%;">
                             Rapiro se conectará dinámicamente desde el consultorio.
                         </p>
                     </div>
@@ -671,21 +687,28 @@
                     <span>👁️ Resultados del Modelo de Visión (CNN)</span>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
                         <span style="font-size: 0.9rem; color: var(--text-secondary);">Morfología detectada:</span>
-                        <span style="font-size: 1.1rem; font-weight: 600; color: #fff;" id="vision-result-morphology">-</span>
+                        <span style="font-size: 1.1rem; font-weight: 600; color: #fff;"
+                            id="vision-result-morphology">-</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
                         <span style="font-size: 0.9rem; color: var(--text-secondary);">Confianza / Certeza:</span>
-                        <span class="badge badge-info" id="vision-result-confidence" style="font-size: 0.9rem; font-weight: 600;">-</span>
+                        <span class="badge badge-info" id="vision-result-confidence"
+                            style="font-size: 0.9rem; font-weight: 600;">-</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.04); padding-bottom: 0.25rem;">
                         <span style="font-size: 0.9rem; color: var(--text-secondary);">Tiempo de Inferencia:</span>
-                        <span style="font-size: 0.9rem; font-weight: 600; color: var(--accent-secondary);" id="vision-result-time">-</span>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: var(--accent-secondary);"
+                            id="vision-result-time">-</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.9rem; color: var(--text-secondary);">Dispositivo:</span>
-                        <span style="font-size: 0.9rem; font-weight: 600; color: #fff;" id="vision-result-hardware">-</span>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: #fff;"
+                            id="vision-result-hardware">-</span>
                     </div>
                 </div>
             </div>
@@ -741,7 +764,8 @@
                         </div>
                         <div class="form-group">
                             <label>Intensidad de picazón (0 a 10)</label>
-                            <input type="number" class="number-input" id="pat-pruritus" min="0" max="10" value="8" step="0.5">
+                            <input type="number" class="number-input" id="pat-pruritus" min="0" max="10" value="8"
+                                step="0.5">
                         </div>
                         <div class="form-group">
                             <label>Antigüedad de la lesión (Meses)</label>
@@ -754,7 +778,7 @@
                     </div>
 
                     <!-- Right Section: Computer Analysis (Visión) -->
-                    <div class="form-section" style="border-color: rgba(99, 102, 241, 0.15); display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- <div class="form-section" style="border-color: rgba(99, 102, 241, 0.15); display: flex; flex-direction: column; gap: 1rem;">
                         <div class="form-section-title" style="color: var(--accent-primary);">
                             💻 Análisis por Computadora
                         </div>
@@ -784,7 +808,7 @@
                                 <span class="badge badge-success" id="comp-status">Cargado</span>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
 
                 <div style="display: flex; gap: 1rem; align-items: center; justify-content: center;">
@@ -802,10 +826,13 @@
                 </div>
 
                 <!-- Warning (Mostrada arriba y con letra más grande) -->
-                <div class="warning-alert" style="font-size: 1.15rem; margin-top: 0.75rem; margin-bottom: 1.25rem; border-color: rgba(239, 68, 68, 0.35); line-height: 1.5;">
+                <div class="warning-alert"
+                    style="font-size: 1.15rem; margin-top: 0.75rem; margin-bottom: 1.25rem; border-color: rgba(239, 68, 68, 0.35); line-height: 1.5;">
                     <span style="font-size: 1.8rem; margin-right: 0.5rem;">⚠️</span>
                     <div>
-                        <strong>Advertencia Importante:</strong> El diagnóstico definitivo es responsabilidad exclusiva del especialista médico. Este software es un prototipo de soporte a la decisión clínica y no cuenta con aprobación regulatoria para su uso clínico independiente.
+                        <strong>Advertencia Importante:</strong> El diagnóstico definitivo es responsabilidad exclusiva
+                        del especialista médico. Este software es un prototipo de soporte a la decisión clínica y no
+                        cuenta con aprobación regulatoria para su uso clínico independiente.
                     </div>
                 </div>
 
@@ -820,14 +847,16 @@
                             <div class="gauge-text" id="result-cert-value">99%</div>
                         </div>
                         <h3 id="result-main-diag" style="margin-top: 1rem; font-size: 1.25rem;">Psoriasis</h3>
-                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Nivel de Certeza</p>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">Nivel de
+                            Certeza</p>
                     </div>
 
                     <!-- Detailed inference outputs -->
                     <div class="inference-details">
                         <!-- Alternatives list -->
                         <div id="alternatives-box">
-                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">Diagnósticos Diferenciales Alternativos</h4>
+                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">Diagnósticos
+                                Diferenciales Alternativos</h4>
                             <div id="alternatives-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
                                 <!-- Alternatives go here -->
                             </div>
@@ -835,7 +864,8 @@
 
                         <!-- Fuzzy variables memberships -->
                         <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">Membresía Difusa de Prurito (Lógica Difusa)</h4>
+                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">Membresía Difusa de
+                                Prurito (Lógica Difusa)</h4>
                             <div class="fuzzy-visualizer" id="fuzzy-visualizer">
                                 <!-- Bars will be updated -->
                             </div>
@@ -843,7 +873,8 @@
 
                         <!-- Recommendations list -->
                         <div>
-                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">Sugerencias Terapéuticas Iniciales</h4>
+                            <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem;">Sugerencias
+                                Terapéuticas Iniciales</h4>
                             <ul class="recommendation-list" id="recommendations-list">
                                 <!-- Suggestions go here -->
                             </ul>
@@ -853,7 +884,8 @@
 
                 <!-- Explanation / Rules Fired -->
                 <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
-                    <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem;">Justificación / Cadena de Razonamiento (Auditoría de Reglas)</h4>
+                    <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem;">Justificación / Cadena de
+                        Razonamiento (Auditoría de Reglas)</h4>
                     <ul class="rules-list" id="rules-fired-list">
                         <!-- Rules go here -->
                     </ul>
@@ -866,6 +898,7 @@
         const API_URL = window.location.origin;
         let ws;
         let objectUrl = null;
+        let latestFrameBlob = null;
 
         // Auto-conectar WebSocket al cargar la página
         window.addEventListener('load', () => {
@@ -876,7 +909,7 @@
         function connectWebSocket() {
             const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
             const wsUrl = `${wsProtocol}//${window.location.host}/ws/dashboard`;
-            
+
             console.log(`Conectando WebSocket a: ${wsUrl}`);
             ws = new WebSocket(wsUrl);
 
@@ -887,6 +920,7 @@
             ws.onmessage = (event) => {
                 if (event.data instanceof Blob) {
                     // Es un frame de video binario de Rapiro
+                    latestFrameBlob = event.data;
                     if (objectUrl) {
                         URL.revokeObjectURL(objectUrl);
                     }
@@ -894,7 +928,7 @@
                     document.getElementById("video-feed-img").src = objectUrl;
                     document.getElementById("video-overlay-msg").classList.add("hidden");
                     document.getElementById("sim-banner").classList.add("hidden");
-                    
+
                     const badge = document.getElementById("camera-mode-badge");
                     badge.innerText = "Cámara Real";
                     badge.className = "badge badge-success";
@@ -927,7 +961,7 @@
             const dot = document.getElementById("pi-status-dot");
             const label = document.getElementById("pi-status-text");
             const overlay = document.getElementById("video-overlay-msg");
-            
+
             if (connected) {
                 dot.className = "status-dot connected";
                 label.innerText = "Rapiro: Conectado (Websocket)";
@@ -953,6 +987,7 @@
                 URL.revokeObjectURL(objectUrl);
                 objectUrl = null;
             }
+            latestFrameBlob = null;
             const img = document.getElementById("video-feed-img");
             img.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='100%' height='100%' fill='%231f2937'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='sans-serif' font-size='14'>Esperando señal de video de la Raspberry Pi...</text></svg>";
             document.getElementById("camera-mode-badge").innerText = "Sin Señal";
@@ -961,6 +996,11 @@
         }
 
         async function triggerCapture() {
+            if (!latestFrameBlob) {
+                alert("No hay señal de video activa de Rapiro para capturar. Asegúrese de que el robot esté conectado y transmitiendo.");
+                return;
+            }
+
             const btn = document.getElementById("btn-capture");
             btn.innerHTML = '<span class="loading-ring"></span> Clasificando...';
             document.getElementById("ai-status-badge").innerText = "Procesando...";
@@ -971,11 +1011,8 @@
             const patMorphologySelect = document.getElementById("pat-morphology");
 
             try {
-                const frameRes = await fetch(document.getElementById("video-feed-img").src);
-                const imageBlob = await frameRes.blob();
-
                 const formData = new FormData();
-                formData.append("image", imageBlob, "capture.jpg");
+                formData.append("image", latestFrameBlob, "capture.jpg");
 
                 const res = await fetch(`${API_URL}/api/predict`, { method: 'POST', body: formData });
                 const data = await res.json();
@@ -983,14 +1020,14 @@
 
                 const { morfologia, confianza } = data.prediction;
                 const stats = data.stats || {};
-                
+
                 patMorphologySelect.value = MODEL_TO_FORM_MORPHOLOGY[morfologia] || morfologia;
                 patMorphologySelect.classList.toggle("low-confidence", confianza < 0.6);
 
                 // Mostrar resultados del modelo de visión abajo de la cámara
                 const visionResultsCard = document.getElementById("vision-results-card");
                 visionResultsCard.classList.remove("hidden");
-                
+
                 const formMorphologyName = MODEL_TO_FORM_MORPHOLOGY[morfologia] || morfologia;
                 document.getElementById("vision-result-morphology").innerText = formMorphologyName.toUpperCase();
                 document.getElementById("vision-result-confidence").innerText = `${Math.round(confianza * 100)}%`;
@@ -998,13 +1035,18 @@
                 document.getElementById("vision-result-time").innerText = `${stats.inference_time_ms} ms`;
                 document.getElementById("vision-result-hardware").innerText = stats.device || "CPU";
 
-                // Actualizar panel de Análisis por Computadora
-                document.getElementById("comp-morphology").innerText = formMorphologyName.toUpperCase();
-                document.getElementById("comp-confidence").innerText = `${Math.round(confianza * 100)}%`;
-                document.getElementById("comp-confidence").className = confianza >= 0.6 ? "badge badge-success" : "badge badge-warning";
-                document.getElementById("comp-time").innerText = `${stats.inference_time_ms} ms`;
-                document.getElementById("comp-img-size").innerText = `${stats.file_size_kb} KB`;
-                document.getElementById("comp-hardware").innerText = stats.device || "CPU";
+                // Actualizar panel de Análisis por Computadora (Comentado/desactivado de manera correcta)
+                /*
+                const compMorph = document.getElementById("comp-morphology");
+                if (compMorph) {
+                    compMorph.innerText = formMorphologyName.toUpperCase();
+                    document.getElementById("comp-confidence").innerText = `${Math.round(confianza * 100)}%`;
+                    document.getElementById("comp-confidence").className = confianza >= 0.6 ? "badge badge-success" : "badge badge-warning";
+                    document.getElementById("comp-time").innerText = `${stats.inference_time_ms} ms`;
+                    document.getElementById("comp-img-size").innerText = `${stats.file_size_kb} KB`;
+                    document.getElementById("comp-hardware").innerText = stats.device || "CPU";
+                }
+                */
 
                 // Efecto de parpadeo de color
                 visionResultsCard.classList.add("blink-active");
@@ -1014,7 +1056,7 @@
                     patMorphologySelect.classList.remove("blink-active");
                 }, 1600);
 
-                document.getElementById("ai-status-badge").innerText = `Vision OK (${Math.round(confianza*100)}%)`;
+                document.getElementById("ai-status-badge").innerText = `Vision OK (${Math.round(confianza * 100)}%)`;
                 document.getElementById("ai-status-badge").className = "badge badge-success";
             } catch (err) {
                 console.error(err);
@@ -1150,4 +1192,5 @@
         }
     </script>
 </body>
+
 </html>

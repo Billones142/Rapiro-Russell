@@ -108,7 +108,11 @@ async def run_inference(inputs: SymptomInput):
             stress=inputs.stress
         )
         # Inferencia completada con éxito
-        await manager.send_to_rapiro({"type": "state", "value": "result_ready"})
+        await manager.send_to_rapiro({
+            "type": "state",
+            "value": "result_ready",
+            "morphology": inputs.morphology
+        })
         return JSONResponse(content=result)
     except Exception as e:
         # Revertir a espera en caso de error
