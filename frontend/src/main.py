@@ -35,7 +35,7 @@ client = RapiroSerialClient()
 
 # --- SIMULACIÓN DE IMÁGENES (Pillow) ---
 def make_mock_frame():
-    """Genera una imagen de simulación de lesión en formato JPEG."""
+    """Genera una imagen de simulación de lesión en formato JPEG con calidad optimizada."""
     if Image is None:
         return b""
     # Crear un lienzo simulando piel
@@ -46,7 +46,7 @@ def make_mock_frame():
     draw.ellipse([130, 90, 190, 150], fill=(252, 165, 165))
     
     buf = io.BytesIO()
-    img.save(buf, format="JPEG")
+    img.save(buf, format="JPEG", quality=75)
     return buf.getvalue()
 
 
@@ -192,8 +192,9 @@ def start_websocket_client():
                         success, frame = camera.read()
                         if success:
                             if not first_frame_logged:
-                                print("[Camera Debug] Frame capturado con éxito de la cámara física. Codificando a JPEG...")
-                            ret, buffer = cv2.imencode('.jpg', frame)
+                                print("[Camera Debug] Frame capturado con éxito de la cámara física. Codificando a JPEG (calidad 75)...")
+                            # Comprimir la imagen usando JPEG con calidad 75 para reducir ancho de banda
+                            ret, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
                             if ret:
                                 frame_bytes = buffer.tobytes()
                                 if not first_frame_logged:
